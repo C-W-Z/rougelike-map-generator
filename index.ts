@@ -7,8 +7,8 @@ const canvas = <HTMLCanvasElement>document.getElementById("canvas");
 canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
 const ctx = canvas.getContext('2d');
-const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 4)
-const d = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
+const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 4);
+let d: Delaunator;
 
 function clearCanvas() {
     if (!ctx) return;
@@ -16,7 +16,7 @@ function clearCanvas() {
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 }
 
-function drawDelaunayVoronoi(delaunay: boolean, voronoi: boolean) {
+function drawDelaunayVoronoi(d: Delaunator, delaunay: boolean, voronoi: boolean) {
     if (!ctx) return;
 
     if (delaunay) {
@@ -59,11 +59,63 @@ function drawDelaunayVoronoi(delaunay: boolean, voronoi: boolean) {
     }
 }
 
-canvas.onmousedown = (e) => {
-    const p = getMousePos(canvas, e);
-    d.addPoint(p);
+let animationId: number | null = null;
+const count = 25;
+const force = 1;
+
+function renderLoop() {
+    if (!ctx) return;
+
     clearCanvas();
-    drawDelaunayVoronoi(true, true);
+
+    g.iterate(force);
+    g.render(ctx);
+
+    animationId = requestAnimationFrame(renderLoop);
+};
+
+function isPaused() {
+    return animationId === null;
 }
 
-clearCanvas();
+function play() {
+    renderLoop();
+}
+
+function pause() {
+    if (animationId)
+        cancelAnimationFrame(animationId);
+    animationId = null;
+}
+
+function setup() {
+    g.randomGenerate(count);
+
+    canvas.onmousedown = (e) => {
+        if (isPaused()) {
+            play();
+            return;
+        }
+        // else if is playing
+        pause();
+        // delaunay triangulation
+        d = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
+        for (const v of g.vertices)
+            d.addPoint(v);
+        // build egdes from delaunay
+        g.clearEdges();
+        d.indicesOfTriangles.forEach(tri => {
+            g.connect(tri[0], tri[1]);
+            g.connect(tri[1], tri[2]);
+            g.connect(tri[2], tri[0]);
+        });
+        // draw
+        if (ctx) {
+            clearCanvas();
+            g.render(ctx);
+        }
+    }
+}
+
+setup();
+play();

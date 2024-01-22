@@ -7,25 +7,39 @@ class ForceGraph {
     constructor(center: Vec, expectedSize: number) {
         this.center = center;
         this.expectedSize = expectedSize;
+        this._vertices = [];
+        this.adjacent = [];
     }
     public get vertices() {
         return this._vertices;
     }
+    public clearEdges() {
+        for (let i = 0; i < this.adjacent.length; i++)
+            this.adjacent[i] = [];
+    }
     private connected(i: number, j: number) {
         return this.adjacent[i].includes(j);
     }
-    private connect(i: number, j: number) {
+    connect(i: number, j: number) {
         if (this.connected(i, j))
             return;
         this.adjacent[i].push(j);
         this.adjacent[j].push(i);
     }
-    private randomGenerate(generateCount: number) {
+    randomGenerate(generateCount: number) {
+        this._vertices = []
         // 隨機生成 Vertices
         for (let i = 0; i < generateCount; i++)
-            this._vertices.push(new Vec(Math.random() * this.expectedSize, Math.random() *this.expectedSize));
+        {
+            this._vertices.push(
+                Vec.add(this.center, new Vec(
+                    Math.random() * this.expectedSize - this.expectedSize / 2,
+                    Math.random() * this.expectedSize - this.expectedSize / 2
+            )));
+            this.adjacent.push([]);
+        }
     }
-    private randomConnect(connectChance: number) {
+    randomConnect(connectChance: number) {
         // 隨機連接 Vertices
         const distributionCap = connectChance * this._vertices.length;
         for (let i = 0; i < this._vertices.length - 1; i++) {
@@ -50,7 +64,7 @@ class ForceGraph {
             ForceGraph.move(vi, this.center, -moveSpeed * clamp((vi.mag() / this.expectedSize), 0, 1));
             for (let j = 0; j < this._vertices.length; j++) {
                 const vj = this._vertices[j];
-                if (vi == vj)
+                if (i == j)
                     continue;
                 const dist = Vec.distance(vi, vj) / this.expectedSize;
                 if (this.connected(i, j))
