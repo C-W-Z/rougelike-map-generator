@@ -4,30 +4,42 @@ class ForceGraph {
     private _vertices: Vec[];
     // adjacent[i] => adjacent vertices id of vertex i
     private adjacent: number[][];
+    private matrix: boolean[][];
     constructor(center: Vec, expectedSize: number) {
         this.center = center;
         this.expectedSize = expectedSize;
         this._vertices = [];
         this.adjacent = [];
+        this.matrix = [];
     }
     public get vertices() {
         return this._vertices;
     }
     public clearEdges() {
-        for (let i = 0; i < this.adjacent.length; i++)
+        for (let i = 0; i < this._vertices.length; i++)
+        {
             this.adjacent[i] = [];
+            for (let j = 0; j < this._vertices.length; j++) {
+                this.matrix[i][j] = false;
+                this.matrix[j][i] = false;
+            }
+        }
     }
     private connected(i: number, j: number) {
-        return this.adjacent[i].includes(j);
+        return this.matrix[i][j];
     }
     connect(i: number, j: number) {
         if (this.connected(i, j))
             return;
         this.adjacent[i].push(j);
         this.adjacent[j].push(i);
+        this.matrix[i][j] = true;
+        this.matrix[j][i] = true;
     }
     randomGenerate(generateCount: number) {
-        this._vertices = []
+        this._vertices = [];
+        this.adjacent = [];
+        this.matrix = [];
         // 隨機生成 Vertices
         for (let i = 0; i < generateCount; i++)
         {
@@ -37,6 +49,9 @@ class ForceGraph {
                     Math.random() * this.expectedSize - this.expectedSize / 2
             )));
             this.adjacent.push([]);
+            this.matrix.push([]);
+            for (let j = 0; j < this._vertices.length; j++)
+                this.matrix[i].push(false);
         }
     }
     randomConnect(connectChance: number) {
