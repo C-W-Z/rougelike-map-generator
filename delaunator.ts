@@ -279,7 +279,7 @@ class Delaunator {
         const { vertices, cells } = this.voronoi();
         return cells.map(cell => cell.map(i => vertices[i]));
     }
-    addPoint(point: Vec) {
+    public addPoint(point: Vec) {
         // 新頂點的index，先保留，後續要建立新三角形時使用
         const idx = this.coords.length;
         // 加入新頂點

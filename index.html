@@ -11,10 +11,22 @@
             align-items: center;
             justify-content: center;
         }
+        #btns {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 
 <body>
+    <div id="btns">
+        <button id="generate">Generate Vertices</button>
+        <button id="delaunate">Delaunay Triangulate</button>
+        <button id="mst">Build MST</button>
+        <button id="play-pause"></button>
+    </div>
     <canvas id="canvas"></canvas>
     <script src="./vec.js"></script>
     <script src="./util.js"></script>

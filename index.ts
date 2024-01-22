@@ -61,11 +61,14 @@ function drawDelaunayVoronoi(d: Delaunator, delaunay: boolean, voronoi: boolean)
 
 let animationId: number | null = null;
 const count = 25;
+const chance = 0.1;
 const force = 1;
+const playPauseBtn = document.getElementById("play-pause");
+const generateBtn = document.getElementById("generate");
+const delaunayBtn = document.getElementById("delaunate");
+const mstBtn = document.getElementById("mst");
 
 function renderLoop() {
-    if (!ctx) return;
-
     clearCanvas();
 
     g.iterate(force);
@@ -79,25 +82,36 @@ function isPaused() {
 }
 
 function play() {
+    if (playPauseBtn)
+        playPauseBtn.textContent = "Pause";
     renderLoop();
 }
 
 function pause() {
+    if (playPauseBtn)
+        playPauseBtn.textContent = "Play";
     if (animationId)
         cancelAnimationFrame(animationId);
     animationId = null;
 }
 
 function setup() {
-    g.randomGenerate(count);
+    generateBtn?.addEventListener("click", event => {
+        g.randomGenerate(count);
+        g.randomConnect(chance);
+        // draw
+        clearCanvas();
+        g.render(ctx);
+    });
 
-    canvas.onmousedown = (e) => {
-        if (isPaused()) {
+    playPauseBtn?.addEventListener("click", event => {
+        if (isPaused())
             play();
-            return;
-        }
-        // else if is playing
-        pause();
+        else
+            pause();
+    });
+
+    delaunayBtn?.addEventListener("click",e => {
         // delaunay triangulation
         d = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
         for (const v of g.vertices)
@@ -110,11 +124,16 @@ function setup() {
             g.connect(tri[2], tri[0]);
         });
         // draw
-        if (ctx) {
-            clearCanvas();
-            g.render(ctx);
-        }
-    }
+        clearCanvas();
+        g.render(ctx);
+    });
+
+    mstBtn?.addEventListener("click",e => {
+        g.buildMST();
+        // draw
+        clearCanvas();
+        g.render(ctx);
+    });
 }
 
 setup();
