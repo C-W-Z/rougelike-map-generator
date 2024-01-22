@@ -65,6 +65,7 @@ const chance = 0.1;
 const force = 1;
 const playPauseBtn = document.getElementById("play-pause");
 const generateBtn = document.getElementById("generate");
+const connectBtn = document.getElementById("connect");
 const delaunayBtn = document.getElementById("delaunate");
 const mstBtn = document.getElementById("mst");
 
@@ -98,6 +99,12 @@ function pause() {
 function setup() {
     generateBtn?.addEventListener("click", event => {
         g.randomGenerate(count);
+        // draw
+        clearCanvas();
+        g.render(ctx);
+    });
+
+    connectBtn?.addEventListener("click", event => {
         g.randomConnect(chance);
         // draw
         clearCanvas();
@@ -111,7 +118,7 @@ function setup() {
             pause();
     });
 
-    delaunayBtn?.addEventListener("click",e => {
+    delaunayBtn?.addEventListener("click", event => {
         // delaunay triangulation
         d = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
         for (const v of g.vertices)
@@ -128,7 +135,7 @@ function setup() {
         g.render(ctx);
     });
 
-    mstBtn?.addEventListener("click",e => {
+    mstBtn?.addEventListener("click", event => {
         g.buildMST();
         // draw
         clearCanvas();

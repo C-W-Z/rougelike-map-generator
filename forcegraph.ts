@@ -55,11 +55,12 @@ class ForceGraph {
     }
     public connect(i: number, j: number) {
         if (this.connected(i, j))
-            return;
+            return false;
         this.adjacent[i].push(j);
         this.adjacent[j].push(i);
         this.matrix[i][j] = true;
         this.matrix[j][i] = true;
+        return true;
     }
     public randomGenerate(generateCount: number) {
         this._vertices = [];
