@@ -1,11 +1,10 @@
-/* reference: https://openhome.cc/Gossip/P5JS/Delaunay.html */
-
 // 三角形 triangle = [Vec1, Vec2, Vec3]
 // 三個頂點以逆時針排序
 // Vec1 對面的邊就是 Ve2 和 Ve3 連線的邊 Vec2-Vec3
 // Vec1 面對的三角形就是和 triangle 共用 Vec2-Vec3 這條邊的另一個三角形
 
 function circumcircle(triangle: Vec[]) {
+    /* reference: https://openhome.cc/Gossip/P5JS/Delaunay.html */
     const [p1, p2, p3] = triangle;
     const v1 = Vec.sub(p2, p1);
     const v2 = Vec.sub(p3, p2);
@@ -25,13 +24,27 @@ function circumcircle(triangle: Vec[]) {
 }
 
 class Delaunator {
+    /* reference: https://openhome.cc/Gossip/P5JS/Delaunay3.html */
+    /* reference: https://openhome.cc/Gossip/P5JS/Delaunay4.html */
     private coords: Vec[];
     private oppoTriangles: Map<number[], (number[] | null)[]>;
     private circumcircles: Map<number[], { center: Vec, radius: number, rr: number } | null>;
+    private trianglesIndices: number[][];
+    private trianglesPoints: Vec[][];
+    private voronoiCellsPoints: Vec[][];
+    public get indicesOfTriangles() {
+        return this.trianglesIndices;
+    }
+    public get pointsOfTriangles() {
+        return this.trianglesPoints;
+    }
+    public get pointsOfVoronoiCells() {
+        return this.voronoiCellsPoints;
+    }
     constructor(width: number, height: number) {
         const center = new Vec(width / 2, height / 2);
         const halfSize = Math.max(width, height) * 10;
-        // 建立一個比畫布大上許多的正方形
+        // 建立一個比畫布大一點的正方形
         this.coords = [
             Vec.add(center, new Vec(-halfSize, -halfSize)),
             Vec.add(center, new Vec(-halfSize, halfSize)),
@@ -164,6 +177,91 @@ class Delaunator {
             opTri[2] = newTriangles[i > 0 ? i - 1 : newTriangles.length + i - 1].t;
         }
     }
+    // 三角形頂點索引
+    private getTrianglesIndices() {
+        return Array.from(this.oppoTriangles.keys())
+            .filter(tri => tri[0] > 3 && tri[1] > 3 && tri[2] > 3)
+            .map(tri => [tri[0] - 4, tri[1] - 4, tri[2] - 4]);
+    }
+    // 三角形頂點座標
+    private getTrianglesPoints() {
+        return Array.from(this.oppoTriangles.keys())
+            .filter(tri => tri[0] > 3 && tri[1] > 3 && tri[2] > 3)
+            .map(tri => [this.coords[tri[0]], this.coords[tri[1]], this.coords[tri[2]]]);
+    }
+    private connectedTrisIndices(tris: number[][]) {
+        // 收集最後頂點連著 i 的三角形
+        const connectedTris: number[][][] = [];
+        for (let i = 0; i < this.coords.length; i++)
+            connectedTris.push([]);
+
+        // 三角形與第 i 個外接圓心的對應
+        const triIndices: Map<number[], number> = new Map();
+        for (let i = 0; i < tris.length; i++) {
+            const [a, b, c] = tris[i];
+
+            // rt1、rt2、rt3 都代表 tris[i]，只是頂點順序不同
+            const rt1 = [b, c, a];
+            const rt2 = [c, a, b];
+            const rt3 = [a, b, c];
+
+            // connectedTris 的索引就是三角形最後一個頂點索引
+            // 這可用於後續依序走訪連接至某點的三角形
+            connectedTris[a].push(rt1);
+            connectedTris[b].push(rt2);
+            connectedTris[c].push(rt3);
+
+            // rt1、rt2、rt3 都代表 tris[i]，外接圓心都是 vertices 的第 i 個
+            triIndices.set(rt1, i);
+            triIndices.set(rt2, i);
+            triIndices.set(rt3, i);
+        }
+
+        return { connectedTris, triIndices };
+    }
+    private indicesOfCell(iTris: number[][], triIndices: Map<number[], number>) {
+        // 取得其中一個三角形的首個頂點，這邊取第 0 個三角形的首個頂點
+        let vi = iTris[0][0];
+        const indices: number[] = [];
+        for (let _ = 0; _ < iTris.length; _++) {
+            // 找到一個以 vi 為起點的三角形，這邊取第 0 個
+            const t = iTris.filter(t => t[0] === vi)[0];
+            // 收集細胞頂點索引
+            const i = triIndices.get(t);
+            if (i !== undefined)
+                indices.push(i);
+            // 目前三角形的下個頂點，就是下個三角形的起點
+            vi = t[1];
+        }
+        return indices;
+    }
+    private voronoi() {
+        const tris = Array.from(this.oppoTriangles.keys());
+        // 收集外接圓心（Voronoi 細胞頂點）
+        const vertices: Vec[] = tris.flatMap(t => {
+            const v = this.circumcircles.get(t);
+            return v ? [v.center] : [];
+        });
+
+        // 計算圍繞某點的三角形關係
+        // connectedTris: 收集最後頂點連著 i 的三角形
+        // triIndices: 三角形與第 i 個外接圓的對應
+        const { connectedTris, triIndices } = this.connectedTrisIndices(tris);
+
+        // 收集各細胞的頂點索引
+        const cells: number[][] = [];
+        // 從 4 開始是因為不包含自設的矩形頂點
+        for (let i = 4; i < this.coords.length; i++) {
+            // 連接 i 點的三角形們構成的細胞
+            cells.push(this.indicesOfCell(connectedTris[i], triIndices));
+        }
+
+        return { vertices, cells };
+    }
+    private getVoronoiCellsPoints() {
+        const { vertices, cells } = this.voronoi();
+        return cells.map(cell => cell.map(i => vertices[i]));
+    }
     addPoint(point: Vec) {
         // 新頂點的index，先保留，後續要建立新三角形時使用
         const idx = this.coords.length;
@@ -188,18 +286,11 @@ class Delaunator {
         });
         // 調整三角形間的鄰接關係
         this.adjustNeighbors(newTriangles);
-    }
-    // 三角形頂點索引
-    indicesOfTriangles() {
-        return Array.from(this.oppoTriangles.keys())
-            .filter(tri => tri[0] > 3 && tri[1] > 3 && tri[2] > 3)
-            .map(tri => [tri[0] - 4, tri[1] - 4, tri[2] - 4]);
-    }
-    // 三角形頂點座標
-    pointsOfTriangles() {
-        return Array.from(this.oppoTriangles.keys())
-            .filter(tri => tri[0] > 3 && tri[1] > 3 && tri[2] > 3)
-            .map(tri => [this.coords[tri[0]], this.coords[tri[1]], this.coords[tri[2]]]);
+
+        // 更新 public getter
+        this.trianglesIndices = this.getTrianglesIndices();
+        this.trianglesPoints = this.getTrianglesPoints();
+        this.voronoiCellsPoints = this.getVoronoiCellsPoints();
     }
 }
 
@@ -218,13 +309,24 @@ function draw() {
     ctx.fillStyle = "#eeeeee";
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    delaunay.pointsOfTriangles().forEach(triangle => {
-        drawLine(ctx, triangle[0], triangle[1], "black", 1);
-        drawLine(ctx, triangle[1], triangle[2], "black", 1);
-        drawLine(ctx, triangle[2], triangle[0], "black", 1);
+    delaunay.pointsOfTriangles.forEach(triangle => {
+        drawLine(ctx, triangle[0], triangle[1], "green", 1);
+        drawLine(ctx, triangle[1], triangle[2], "green", 1);
+        drawLine(ctx, triangle[2], triangle[0], "green", 1);
     });
 
-    points.forEach(p => drawCircle(ctx, p, 2, "black"));
+    delaunay.pointsOfVoronoiCells.forEach(pointsOfCell => {
+        ctx.beginPath();
+        ctx.moveTo(pointsOfCell[0].x, pointsOfCell[0].y);
+        for (let i = 1; i < pointsOfCell.length; i++)
+            ctx.lineTo(pointsOfCell[i].x, pointsOfCell[i].y);
+        ctx.lineTo(pointsOfCell[0].x, pointsOfCell[0].y);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "red";
+        ctx.stroke();
+    });
+
+    points.forEach(p => drawCircle(ctx, p, 2, "blue"));
 }
 
 canvas.onmousedown = (e) => {
