@@ -35,6 +35,9 @@ class Delaunator {
     private _trianglesPoints: Vec[][];
     private _hasUpdateVoronoiCellsPoints: boolean = true;
     private _voronoiCellsPoints: Vec[][];
+    public get vertices() {
+        return this.coords;
+    }
     public get indicesOfTriangles() {
         if (!this._hasUpdateTrianglesIndices) {
             this._trianglesIndices = this.getTrianglesIndices();
@@ -306,51 +309,4 @@ class Delaunator {
         this._hasUpdateTrianglesPoints = false;
         this._hasUpdateVoronoiCellsPoints = false;
     }
-}
-
-const CANVAS_SIZE: number = 500;
-const canvas = <HTMLCanvasElement>document.getElementById("canvas");
-canvas.height = CANVAS_SIZE;
-canvas.width = CANVAS_SIZE;
-const ctx = canvas.getContext('2d');
-
-const points: Vec[] = [];
-const delaunay = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
-
-function draw() {
-    if (!ctx) return;
-
-    ctx.fillStyle = "#eeeeee";
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    delaunay.pointsOfTriangles.forEach(triangle => {
-        drawLine(ctx, triangle[0], triangle[1], "green", 1);
-        drawLine(ctx, triangle[1], triangle[2], "green", 1);
-        drawLine(ctx, triangle[2], triangle[0], "green", 1);
-    });
-
-    delaunay.pointsOfVoronoiCells.forEach(pointsOfCell => {
-        ctx.beginPath();
-        ctx.moveTo(pointsOfCell[0].x, pointsOfCell[0].y);
-        for (let i = 1; i < pointsOfCell.length; i++)
-            ctx.lineTo(pointsOfCell[i].x, pointsOfCell[i].y);
-        ctx.lineTo(pointsOfCell[0].x, pointsOfCell[0].y);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "red";
-        ctx.stroke();
-    });
-
-    points.forEach(p => drawCircle(ctx, p, 2, "blue"));
-}
-
-canvas.onmousedown = (e) => {
-    const p = getMousePos(canvas, e);
-    points.push(p);
-    delaunay.addPoint(p);
-    draw();
-}
-
-if (ctx) {
-    ctx.fillStyle = "#eeeeee";
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 }
