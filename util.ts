@@ -36,3 +36,11 @@ function drawCircle(ctx: CanvasRenderingContext2D | null, center: Vec, radius: a
         ctx.stroke();
     }
 }
+
+function getMousePos(canvas: HTMLCanvasElement, evt: MouseEvent) {
+    const rect = canvas.getBoundingClientRect();
+    return new Vec(
+        evt.clientX - rect.left,
+        evt.clientY - rect.top
+    );
+}
