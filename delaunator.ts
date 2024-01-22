@@ -29,17 +29,32 @@ class Delaunator {
     private coords: Vec[];
     private oppoTriangles: Map<number[], (number[] | null)[]>;
     private circumcircles: Map<number[], { center: Vec, radius: number, rr: number } | null>;
-    private trianglesIndices: number[][];
-    private trianglesPoints: Vec[][];
-    private voronoiCellsPoints: Vec[][];
+    private _hasUpdateTrianglesIndices: boolean = true;
+    private _trianglesIndices: number[][];
+    private _hasUpdateTrianglesPoints: boolean = true;
+    private _trianglesPoints: Vec[][];
+    private _hasUpdateVoronoiCellsPoints: boolean = true;
+    private _voronoiCellsPoints: Vec[][];
     public get indicesOfTriangles() {
-        return this.trianglesIndices;
+        if (!this._hasUpdateTrianglesIndices) {
+            this._trianglesIndices = this.getTrianglesIndices();
+            this._hasUpdateTrianglesIndices = true;
+        }
+        return this._trianglesIndices;
     }
     public get pointsOfTriangles() {
-        return this.trianglesPoints;
+        if (!this._hasUpdateTrianglesPoints) {
+            this._trianglesPoints = this.getTrianglesPoints();
+            this._hasUpdateTrianglesPoints = true;
+        }
+        return this._trianglesPoints;
     }
     public get pointsOfVoronoiCells() {
-        return this.voronoiCellsPoints;
+        if (!this._hasUpdateVoronoiCellsPoints) {
+            this._voronoiCellsPoints = this.getVoronoiCellsPoints();
+            this._hasUpdateVoronoiCellsPoints = true;
+        }
+        return this._voronoiCellsPoints;
     }
     constructor(width: number, height: number) {
         const center = new Vec(width / 2, height / 2);
@@ -103,13 +118,12 @@ class Delaunator {
                 break;
             }
             const opTri = badT[vi];
-            // 如果 opTri 是合格三角形
-            if (badTriangles.find(tri => tri === opTri) === undefined) {
+            // 如果 opTri 不存在或 opTri 是合格三角形
+            if (!opTri || badTriangles.find(tri => tri === opTri) === undefined) {
                 boundary.push({
                     // 記錄 vi 在 t 中面對的邊的索引，這邊有處理循環與負索引
                     edge: [t[(vi + 1) % 3], t[vi > 0 ? vi - 1 : (t.length + vi - 1)]],
-                    // edge: [t[(vi + 1) % 3], t[(vi + 2) % 3]],
-                    // 記錄第 vi 頂點面對的三角形（目前是合格的 delaunay 三角形）         
+                    // 記錄第 vi 頂點面對的三角形（目前是合格的 delaunay 三角形）
                     delaunayTri: opTri
                 });
                 // 下個頂點索引
@@ -288,9 +302,9 @@ class Delaunator {
         this.adjustNeighbors(newTriangles);
 
         // 更新 public getter
-        this.trianglesIndices = this.getTrianglesIndices();
-        this.trianglesPoints = this.getTrianglesPoints();
-        this.voronoiCellsPoints = this.getVoronoiCellsPoints();
+        this._hasUpdateTrianglesIndices = false;
+        this._hasUpdateTrianglesPoints = false;
+        this._hasUpdateVoronoiCellsPoints = false;
     }
 }
 
@@ -301,7 +315,7 @@ canvas.width = CANVAS_SIZE;
 const ctx = canvas.getContext('2d');
 
 const points: Vec[] = [];
-let delaunay = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
+const delaunay = new Delaunator(CANVAS_SIZE, CANVAS_SIZE);
 
 function draw() {
     if (!ctx) return;
