@@ -66,7 +66,7 @@ class Vec {
         return u.dot(v);
     }
     static cross(u: Vec, v: Vec) {
-        return new Vec(u.y * v.z - u.z - v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y - v.x);
+        return new Vec(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
     }
     private static _epsilon = 0.001;
     static equal(u: Vec, v: Vec) {
