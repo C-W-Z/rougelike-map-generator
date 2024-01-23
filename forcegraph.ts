@@ -81,8 +81,8 @@ class Heap {
     }
     private siftDown() {
         let node = this.top;
-        while ( (Heap.left(node) < this.size() && this.greater(Heap.left(node), node)) ||
-                (Heap.right(node) < this.size() && this.greater(Heap.right(node), node))) {
+        while ((Heap.left(node) < this.size() && this.greater(Heap.left(node), node)) ||
+            (Heap.right(node) < this.size() && this.greater(Heap.right(node), node))) {
             let maxChild = (Heap.right(node) < this.size() && this.greater(Heap.right(node), Heap.left(node))) ? Heap.right(node) : Heap.left(node);
             this.swap(node, maxChild);
             node = maxChild;
@@ -106,6 +106,12 @@ class ForceGraph {
     }
     public get vertices() {
         return this._vertices;
+    }
+    public get start() {
+        return this.pathEnd[0];
+    }
+    public get end() {
+        return this.pathEnd[1];
     }
     public clearEdges() {
         for (let i = 0; i < this._vertices.length; i++) {
@@ -220,16 +226,6 @@ class ForceGraph {
             ctx.closePath();
         }
         ctx.fill();
-
-        if (this.pathEnd[0] !== null && this.pathEnd[1] !== null) {
-            // drawCircle(ctx, this._vertices[this.pathEnd[0]], vertexRadius, "red");
-            // drawCircle(ctx, this._vertices[this.pathEnd[1]], vertexRadius, "red");
-            let p = this._vertices[this.pathEnd[0]];
-            ctx.drawImage(locateImg, p.x - 16, p.y - 32, 32, 32);
-            // drawText(ctx, this._vertices[this.pathEnd[1]], "✘", 32, "red");
-            p = this._vertices[this.pathEnd[1]];
-            ctx.drawImage(crossImg, p.x - 16, p.y - 16, 32, 32);
-        }
     }
     private findMST() { // Kruskal's algorithm
         //            weight  vertex  vertex
@@ -297,7 +293,7 @@ class ForceGraph {
                 if (dist[cur] + weight < dist[v]) {
                     dist[v] = dist[cur] + weight;
                     prev[v] = cur;
-                    heap.push({id: v, dist: weight});
+                    heap.push({ id: v, dist: weight });
                 }
             }
         }
@@ -312,18 +308,7 @@ class ForceGraph {
         return path;
     }
     private findPaths(pathCount: number) {
-        // find the lowest & highest point as start & end
-        let start = 0, end = 0;
-        const rightTop = Vec.add(this.center, new Vec(this.expectedSize/2, -this.expectedSize/2));
-        const leftBottom = Vec.add(this.center, new Vec(-this.expectedSize/2, this.expectedSize/2));
-        for (let i = 0; i < this._vertices.length; i++) {
-            if (Vec.distance(leftBottom, this._vertices[i]) < Vec.distance(leftBottom, this._vertices[start]))
-                start = i;
-            if (i == start) continue;
-            if (Vec.distance(rightTop, this._vertices[i]) < Vec.distance(rightTop, this._vertices[end]))
-                end = i;
-        }
-
+        const [start, end] = this.findPathEnd();
         this.pathEnd = [start, end];
         if (start == end || start === null || end === null) {
             console.error("Start / End error: ", this.pathEnd);
@@ -338,19 +323,12 @@ class ForceGraph {
             if (pathCount <= 0)
                 break;
             // randomly remove some edges of newPath from graph
-            let removeCount = randomInt(1, 3 + clamp(pathCount/2, 0, 3));
+            let removeCount = randomInt(1, 3) + clamp(Math.floor(pathCount / 2), 0, 2);
             while (removeCount-- > 0) {
                 const vertexToRemove = newPath[randomInt(1, newPath.length - 2)];
                 this.removeAdjacent(vertexToRemove);
             }
         }
-
-        // find longer path
-        for (const p of paths)
-            for (const v of p)
-                if (v != start && v != end)
-                this.removeAdjacent(v);
-        paths.push(this.findPath(this.adjacent, start, end));
 
         return paths;
     }
@@ -383,7 +361,7 @@ class ForceGraph {
 
         for (const path of paths)
             for (let i = 1; i < path.length; i++)
-                this.connect(path[i-1], path[i]);
+                this.connect(path[i - 1], path[i]);
 
         this.pathEnd = oldPathEnd;
     }
@@ -405,10 +383,32 @@ class ForceGraph {
 
         for (const path of paths)
             for (let i = 1; i < path.length; i++)
-                this.connect(path[i-1], path[i]);
+                this.connect(path[i - 1], path[i]);
 
         this.pathEnd = [start, end];
-
+    }
+    private findPathEnd() {
+        // find the lowest & highest point as start & end
+        let start = 0, end = 0;
+        const rightTop = Vec.add(this.center, new Vec(this.expectedSize, -this.expectedSize));
+        const leftBottom = Vec.add(this.center, new Vec(-this.expectedSize, this.expectedSize));
+        for (let i = 0; i < this._vertices.length; i++) {
+            if (Vec.distance(leftBottom, this._vertices[i]) < Vec.distance(leftBottom, this._vertices[start]))
+                start = i;
+            if (i == start) continue;
+            if (Vec.distance(rightTop, this._vertices[i]) < Vec.distance(rightTop, this._vertices[end]))
+                end = i;
+        }
+        if (start == end || start === null || end === null)
+            console.error("find start / end error: ", [start, end]);
+        return [start, end];
+    }
+    public fixPathEnd() {
+        // fix if no start / end vertex
+        if (this.pathEnd[0] === null || this.pathEnd[1] === null) {
+            const [start, end] = this.findPathEnd();
+            this.pathEnd = [start, end];
+        }
         // fix if start / end vertex has adjacent leaf vertices
         for (let i = 0; i < 2; i++)
             for (const v of this.adjacent[Number(this.pathEnd[i])])
@@ -416,5 +416,47 @@ class ForceGraph {
                     this.pathEnd[i] = v;
                     break;
                 }
+    }
+    public randomDeleteEdge(repeat: number) {
+        const canDeleteEdgeOn = (v: number) =>
+            v != this.pathEnd[0] && v != this.pathEnd[1] && this.adjacent[v].length > 3;
+
+        const candidate: number[] = [];
+        for (let i = 0; i < this._vertices.length; i++)
+            if (canDeleteEdgeOn(i))
+                candidate.push(i);
+
+        if (candidate.length == 0)
+            return;
+
+        let count = 0;
+        while (repeat-- > 0) {
+            const v = candidate[randomInt(0, candidate.length - 1)];
+            if (this.adjacent[v].length == 0)
+                continue;
+            const u = this.adjacent[v][randomInt(0, this.adjacent[v].length - 1)];
+            if (canDeleteEdgeOn(u)) {
+                this.unconnect(v, u);
+                count++;
+            }
+        }
+
+        console.log("delete " + count);
+    }
+    public calculateFitness() {
+        let count1 = 0;
+        let count2 = 0;
+        let bad = 0;
+        for (let i = 0; i < this._vertices.length; i++) {
+            if (this.adjacent[i].length == 2)
+                count2++;
+            else if (this.adjacent[i].length == 1) {
+                count1++;
+                if (this.adjacent[this.adjacent[i][0]].length == 2)
+                    bad++;
+            }
+        }
+        console.log("count: " + count1, count2, bad);
+        return [count1, count2, bad];
     }
 }

@@ -12,9 +12,10 @@ const ctx = canvas.getContext('2d');
 const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 2);
 
 let animationId: number | null = null;
-const vertexCount = 50;
+const vertexCount = 60;
 const vertexForce = 1;
-const pathCount = 5;
+const pathCount = 8;
+const deleteCount = 5;
 const playPauseBtn = document.getElementById("play-pause");
 const generateBtn = document.getElementById("generate");
 const connectBtn = document.getElementById("connect");
@@ -36,10 +37,19 @@ function clearCanvas() {
 }
 
 function redraw(forceGraph: boolean, delaunay: boolean = false, voronoi: boolean = false) {
+    if (!ctx) return;
     clearCanvas();
     if (forceGraph)
         g.render(ctx, VERTEX_RADIUS, VERTEX_COLOR, EDGE_WIDTH, EDGE_COLOR);
-    ctx?.drawImage(compassImg, CANVAS_SIZE - 64 - 16, 16, 64, 64);
+    // draw start & end icon
+    if (g.start !== null && g.end !== null) {
+        let p = g.vertices[g.start];
+        ctx.drawImage(locateImg, p.x - 16, p.y - 32, 32, 32);
+        p = g.vertices[g.end];
+        ctx.drawImage(crossImg, p.x - 16, p.y - 16, 32, 32);
+    }
+    // draw compass icon
+    ctx.drawImage(compassImg, CANVAS_SIZE - 64 - 16, 16, 64, 64);
 }
 
 function renderLoop() {
@@ -113,9 +123,17 @@ function setup() {
         for (let i = 0; i < 100; i++)
             g.iterate(vertexForce);
         g.delaunate();
+        for (let i = 0; i < 100; i++)
+            g.iterate(vertexForce);
+        g.delaunate();
         g.buildMSTPaths(pathCount);
         for (let i = 0; i < 100; i++)
             g.iterate(vertexForce);
+        g.delaunate();
+        g.buildMSTPaths(pathCount);
+        g.randomDeleteEdge(deleteCount);
+        g.fixPathEnd();
+        g.calculateFitness();
         redraw(true);
     })
 
