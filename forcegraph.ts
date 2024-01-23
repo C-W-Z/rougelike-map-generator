@@ -1,9 +1,9 @@
 class DSU {
-    public set: { p: number, r: number }[];
+    private set: { p: number, r: number }[];
     constructor(size: number) {
         this.set = [];
         for (let i = 0; i < size; i++)
-            this.set.push({ p: i, r: 0});
+            this.set.push({ p: i, r: 0 });
     }
     Find(x: number) {
         // path compression
@@ -26,10 +26,9 @@ class DSU {
 class ForceGraph {
     private center: Vec;
     private expectedSize: number;
-    private _vertices: Vec[];
-    // adjacent[i] => adjacent vertices id of vertex i
-    private adjacent: number[][];
-    private matrix: boolean[][];
+    private _vertices: Vec[]; // the coordinates of vertices
+    private adjacent: number[][]; // adjacent[i] => adjacent vertices id of vertex i
+    private matrix: boolean[][]; // adjacency matrix
     constructor(center: Vec, expectedSize: number) {
         this.center = center;
         this.expectedSize = expectedSize;
@@ -76,7 +75,7 @@ class ForceGraph {
             )));
             this.adjacent.push([]);
             this.matrix.push([]);
-            for (let j = 0; j < this._vertices.length; j++)
+            for (let j = 0; j < generateCount; j++)
                 this.matrix[i].push(false);
         }
     }
@@ -94,11 +93,12 @@ class ForceGraph {
             }
         }
     }
-    private static move(vertex: Vec, pos: Vec, moveSpeed: number) {
-        const dir = Vec.sub(vertex, pos).normalized();
+    private static move(vertex: Vec, targetPos: Vec, moveSpeed: number) {
+        const dir = Vec.sub(vertex, targetPos).normalized();
         vertex.add(Vec.mult(dir, moveSpeed));
     }
     public iterate(moveSpeed: number) {
+        /* reference: https://youtu.be/TXi5gA-pSkY?si=ylsXEAxPUTZ-IeKY */
         for (let i = 0; i < this._vertices.length; i++) {
             const vi = this._vertices[i];
             // vi move to center
@@ -116,24 +116,41 @@ class ForceGraph {
             }
         }
     }
-    public render(ctx: CanvasRenderingContext2D | null) {
+    public render(ctx: CanvasRenderingContext2D | null, vertexRadius: number, vertexColor: string, edgeWidth: number, edgeColor: string) {
         if (!ctx) return;
+
         // draw egdes
+        ctx.lineWidth = edgeWidth;
+        ctx.strokeStyle = edgeColor;
+        ctx.beginPath();
         for (let i = 0; i < this._vertices.length - 1; i++)
             for (let j = i + 1; j < this._vertices.length; j++)
-                if (this.connected(i, j))
-                    drawLine(ctx, this._vertices[i], this._vertices[j], "green", 1);
+                if (this.connected(i, j)) {
+                    ctx.moveTo(this._vertices[i].x, this._vertices[i].y);
+                    ctx.lineTo(this._vertices[j].x, this._vertices[j].y);
+                }
+        ctx.stroke();
+
         // draw vertices
-        for (const v of this._vertices)
-            drawCircle(ctx, v, 2, "black");
+        ctx.fillStyle = vertexColor;
+        ctx.beginPath();
+        for (const v of this._vertices) {
+            ctx.arc(v.x, v.y, vertexRadius, 0, 2 * Math.PI);
+            ctx.closePath();
+        }
+        ctx.fill();
     }
-    public buildMST() {
+    public buildMST() { // Kruskal's algorithm
         //            weight  vertex  vertex
         const edges: [number, number, number][] = [];
         for (let i = 0; i < this._vertices.length; i++)
             for (let j = i + 1; j < this._vertices.length; j++)
                 if (this.connected(i, j))
                     edges.push([Vec.distance(this._vertices[i], this._vertices[j]), i, j]);
+        if (edges.length < this._vertices.length - 1) {
+            console.error("Not Enough edges in", edges);
+            return;
+        }
         // sort by weight(distance) increasingly
         edges.sort((e1, e2) => {
             if (e1[0] > e2[0])

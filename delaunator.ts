@@ -23,7 +23,7 @@ function circumcircle(triangle: Vec[]) {
     return null;
 }
 
-class Delaunator {
+class Delaunator { // Bowyer–Watson algorithm
     /* reference: https://openhome.cc/Gossip/P5JS/Delaunay3.html */
     /* reference: https://openhome.cc/Gossip/P5JS/Delaunay4.html */
     private coords: Vec[];
@@ -59,8 +59,7 @@ class Delaunator {
         }
         return this._voronoiCellsPoints;
     }
-    constructor(width: number, height: number) {
-        const center = new Vec(width / 2, height / 2);
+    constructor(center: Vec, width: number, height: number) {
         const halfSize = Math.max(width, height) * 10;
         // 建立一個比畫布大一點的正方形
         this.coords = [
@@ -194,14 +193,12 @@ class Delaunator {
             opTri[2] = newTriangles[i > 0 ? i - 1 : newTriangles.length + i - 1].t;
         }
     }
-    // 三角形頂點索引
-    private getTrianglesIndices() {
+    private getTrianglesIndices() { // 三角形頂點索引
         return Array.from(this.oppoTriangles.keys())
             .filter(tri => tri[0] > 3 && tri[1] > 3 && tri[2] > 3)
             .map(tri => [tri[0] - 4, tri[1] - 4, tri[2] - 4]);
     }
-    // 三角形頂點座標
-    private getTrianglesPoints() {
+    private getTrianglesPoints() { // 三角形頂點座標
         return Array.from(this.oppoTriangles.keys())
             .filter(tri => tri[0] > 3 && tri[1] > 3 && tri[2] > 3)
             .map(tri => [this.coords[tri[0]], this.coords[tri[1]], this.coords[tri[2]]]);
@@ -308,5 +305,51 @@ class Delaunator {
         this._hasUpdateTrianglesIndices = false;
         this._hasUpdateTrianglesPoints = false;
         this._hasUpdateVoronoiCellsPoints = false;
+    }
+    public render(delaunay: boolean, voronoi: boolean, ctx: CanvasRenderingContext2D | null, vertexRadius: number, vertexColor: string, delaunayWidth: number, delaunayColor: string, voronoiWidth: number, voronoiColor: string) {
+        if (!ctx) return;
+    
+        if (delaunay) {
+            if (voronoi)
+                ctx.setLineDash([5, 5]); // set to dashed line
+            // draw triangles' edges
+            ctx.lineWidth = delaunayWidth;
+            ctx.strokeStyle = delaunayColor;
+            ctx.beginPath();
+            this.pointsOfTriangles.forEach(triangle => {
+                ctx.moveTo(triangle[0].x, triangle[0].y);
+                ctx.lineTo(triangle[1].x, triangle[1].y);
+                ctx.lineTo(triangle[2].x, triangle[2].y);
+                ctx.lineTo(triangle[0].x, triangle[0].y);
+            });
+            ctx.stroke();
+            if (voronoi)
+                ctx.setLineDash([]); // reset to solid line
+        }
+
+        if (voronoi) {
+            // draw cells' edges
+            ctx.lineWidth = voronoiWidth;
+            ctx.strokeStyle = voronoiColor;
+            ctx.beginPath();
+            this.pointsOfVoronoiCells.forEach(pointsOfCell => {
+                ctx.moveTo(pointsOfCell[0].x, pointsOfCell[0].y);
+                for (let i = 1; i < pointsOfCell.length; i++)
+                    ctx.lineTo(pointsOfCell[i].x, pointsOfCell[i].y);
+                ctx.lineTo(pointsOfCell[0].x, pointsOfCell[0].y);
+            });
+            ctx.stroke();
+        }
+    
+        if (delaunay || voronoi) {
+            // draw vertices
+            ctx.fillStyle = vertexColor;
+            ctx.beginPath();
+            this.vertices.forEach(v => {
+                ctx.arc(v.x, v.y, vertexRadius, 0, 2 * Math.PI);
+                ctx.closePath();
+            });
+            ctx.fill();
+        }
     }
 }
