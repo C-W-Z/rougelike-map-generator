@@ -446,17 +446,32 @@ class ForceGraph {
     public calculateFitness() {
         let count1 = 0;
         let count2 = 0;
-        let bad = 0;
+        let badCount = 0;
+        let maxBadLen = 0;
         for (let i = 0; i < this._vertices.length; i++) {
             if (this.adjacent[i].length == 2)
                 count2++;
             else if (this.adjacent[i].length == 1) {
                 count1++;
-                if (this.adjacent[this.adjacent[i][0]].length == 2)
-                    bad++;
+                let prev = i;
+                let next = this.adjacent[i][0];
+                if (this.adjacent[next].length == 2)
+                    badCount++;
+                let len = 1;
+                while (this.adjacent[next].length == 2) {
+                    len++;
+                    if (this.adjacent[next][0] == prev) {
+                        prev = next;
+                        next = this.adjacent[next][1];
+                    } else {
+                        prev = next;
+                        next = this.adjacent[next][0];
+                    }
+                }
+                maxBadLen = Math.max(maxBadLen, len);
             }
         }
-        console.log("count: " + count1, count2, bad);
-        return [count1, count2, bad];
+        console.log("count: " + count1, count2, badCount, maxBadLen);
+        return [count1, count2, badCount, maxBadLen];
     }
 }
