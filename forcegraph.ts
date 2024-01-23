@@ -221,9 +221,14 @@ class ForceGraph {
         }
         ctx.fill();
 
-        if (this.pathEnd[0] && this.pathEnd[1]) {
-            drawCircle(ctx, this._vertices[this.pathEnd[0]], vertexRadius, "red");
-            drawCircle(ctx, this._vertices[this.pathEnd[1]], vertexRadius, "red");
+        if (this.pathEnd[0] !== null && this.pathEnd[1] !== null) {
+            // drawCircle(ctx, this._vertices[this.pathEnd[0]], vertexRadius, "red");
+            // drawCircle(ctx, this._vertices[this.pathEnd[1]], vertexRadius, "red");
+            let p = this._vertices[this.pathEnd[0]];
+            ctx.drawImage(locateImg, p.x - 16, p.y - 32, 32, 32);
+            // drawText(ctx, this._vertices[this.pathEnd[1]], "✘", 32, "red");
+            p = this._vertices[this.pathEnd[1]];
+            ctx.drawImage(crossImg, p.x - 16, p.y - 16, 32, 32);
         }
     }
     private findMST() { // Kruskal's algorithm
@@ -312,14 +317,16 @@ class ForceGraph {
         const rightTop = Vec.add(this.center, new Vec(this.expectedSize/2, -this.expectedSize/2));
         const leftBottom = Vec.add(this.center, new Vec(-this.expectedSize/2, this.expectedSize/2));
         for (let i = 0; i < this._vertices.length; i++) {
-            if (Vec.distance(rightTop, this._vertices[i]) < Vec.distance(rightTop, this._vertices[start]))
+            if (Vec.distance(leftBottom, this._vertices[i]) < Vec.distance(leftBottom, this._vertices[start]))
                 start = i;
             if (i == start) continue;
-            if (Vec.distance(leftBottom, this._vertices[i]) < Vec.distance(leftBottom, this._vertices[end]))
+            if (Vec.distance(rightTop, this._vertices[i]) < Vec.distance(rightTop, this._vertices[end]))
                 end = i;
         }
-        if (start == end) {
-            console.error("Start & End are same: ", start, " in ", this._vertices);
+
+        this.pathEnd = [start, end];
+        if (start == end || start === null || end === null) {
+            console.error("Start / End error: ", this.pathEnd);
             return [];
         }
 
@@ -331,15 +338,34 @@ class ForceGraph {
             if (pathCount <= 0)
                 break;
             // randomly remove some edges of newPath from graph
-            let removeCount = randomInt(newPath.length / 3, newPath.length * 2 / 3);
+            let removeCount = randomInt(1, 3 + clamp(pathCount/2, 0, 3));
             while (removeCount-- > 0) {
                 const vertexToRemove = newPath[randomInt(1, newPath.length - 2)];
                 this.removeAdjacent(vertexToRemove);
             }
         }
 
-        this.pathEnd = [start, end];
+        // find longer path
+        for (const p of paths)
+            for (const v of p)
+                if (v != start && v != end)
+                this.removeAdjacent(v);
+        paths.push(this.findPath(this.adjacent, start, end));
+
         return paths;
+    }
+    public delaunate() {
+        // delaunay triangulation
+        const d = new Delaunator(CANVAS_CENTER, CANVAS_SIZE, CANVAS_SIZE);
+        for (const v of g.vertices)
+            d.addPoint(v);
+        // build egdes from delaunay
+        g.clearEdges();
+        d.indicesOfTriangles.forEach(tri => {
+            g.connect(tri[0], tri[1]);
+            g.connect(tri[1], tri[2]);
+            g.connect(tri[2], tri[0]);
+        });
     }
     public buildMST() {
         const mst = this.findMST();
@@ -364,7 +390,12 @@ class ForceGraph {
     public buildMSTPaths(pathCount: number) {
         const mst = this.findMST();
         const paths = this.findPaths(pathCount);
-        const oldPathEnd = this.pathEnd;
+        const [start, end] = this.pathEnd;
+
+        if (start === null || end === null) {
+            console.error("Not found start / end points");
+            return;
+        }
 
         // rebuild edges
         this.clearEdges();
@@ -376,6 +407,14 @@ class ForceGraph {
             for (let i = 1; i < path.length; i++)
                 this.connect(path[i-1], path[i]);
 
-        this.pathEnd = oldPathEnd;
+        this.pathEnd = [start, end];
+
+        // fix if start / end vertex has adjacent leaf vertices
+        for (let i = 0; i < 2; i++)
+            for (const v of this.adjacent[Number(this.pathEnd[i])])
+                if (this.adjacent[v].length == 1) {
+                    this.pathEnd[i] = v;
+                    break;
+                }
     }
 }

@@ -37,6 +37,15 @@ function drawCircle(ctx: CanvasRenderingContext2D | null, center: Vec, radius: a
     }
 }
 
+function drawText(ctx: CanvasRenderingContext2D | null, pos: Vec, text: string, fontsize: number, textColor: string) {
+    if (!ctx || fontsize < 0 || text == '') return;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = textColor;
+    ctx.font = fontsize + 'px sans-serif';
+    ctx.fillText(text, pos.x, pos.y);
+}
+
 function getMousePos(canvas: HTMLCanvasElement, evt: MouseEvent) {
     const rect = canvas.getBoundingClientRect();
     return new Vec(

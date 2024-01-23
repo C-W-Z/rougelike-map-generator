@@ -5,13 +5,13 @@
     <meta charset="utf-8">
     <title>Force Graph</title>
     <style>
-        body {
+        .col {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
         }
-        #btns {
+        .row {
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -20,22 +20,25 @@
     </style>
 </head>
 
-<body>
-    <div id="btns">
+<body class="col">
+    <div class="row">
         <button id="generate">Generate</button>
         <button id="connect">Connect</button>
         <button id="clearconnect">Clear Connect</button>
         <button id="delaunate">Delaunay Triangulate</button>
+    </div>
+    <div class="row">
         <button id="mst">Build MST</button>
         <button id="path">Build Path</button>
         <button id="mst-path">Merge MST & Path</button>
+        <button id="newmap">New Map</button>
         <button id="play-pause"></button>
     </div>
     <canvas id="canvas"></canvas>
     <script src="./vec.js"></script>
     <script src="./util.js"></script>
-    <script src="./forcegraph.js"></script>
     <script src="./delaunator.js"></script>
+    <script src="./forcegraph.js"></script>
     <script src="./index.js"></script>
 </body>
 

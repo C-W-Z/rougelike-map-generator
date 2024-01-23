@@ -2,20 +2,19 @@ const CANVAS_SIZE: number = 500;
 const CANVAS_CENTER = new Vec(CANVAS_SIZE / 2, CANVAS_SIZE / 2);
 const VERTEX_RADIUS = 2;
 const EDGE_WIDTH = 1;
-const VERTEX_COLOR = "blue";
-const EDGE_COLOR = "green";
+const VERTEX_COLOR = "black";
+const EDGE_COLOR = "#604c39";
 
 const canvas = <HTMLCanvasElement>document.getElementById("canvas");
 canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
 const ctx = canvas.getContext('2d');
 const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 2);
-let d: Delaunator;
 
 let animationId: number | null = null;
-const count = 50;
-const chance = 0.1;
-const force = 1;
+const vertexCount = 50;
+const vertexForce = 1;
+const pathCount = 5;
 const playPauseBtn = document.getElementById("play-pause");
 const generateBtn = document.getElementById("generate");
 const connectBtn = document.getElementById("connect");
@@ -24,10 +23,15 @@ const delaunayBtn = document.getElementById("delaunate");
 const mstBtn = document.getElementById("mst");
 const pathBtn = document.getElementById("path");
 const mstpathBtn = document.getElementById("mst-path");
+const newmapBtn = document.getElementById("newmap");
+
+const locateImg = new Image();
+const crossImg = new Image();
+const compassImg = new Image();
 
 function clearCanvas() {
     if (!ctx) return;
-    ctx.fillStyle = "#eeeeee";
+    ctx.fillStyle = "#ad9064";
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 }
 
@@ -35,12 +39,11 @@ function redraw(forceGraph: boolean, delaunay: boolean = false, voronoi: boolean
     clearCanvas();
     if (forceGraph)
         g.render(ctx, VERTEX_RADIUS, VERTEX_COLOR, EDGE_WIDTH, EDGE_COLOR);
-    if (delaunay || voronoi)
-        d.render(delaunay, voronoi, ctx, VERTEX_RADIUS, VERTEX_COLOR, EDGE_WIDTH, EDGE_COLOR, 2, "red");
+    ctx?.drawImage(compassImg, CANVAS_SIZE - 64 - 16, 16, 64, 64);
 }
 
 function renderLoop() {
-    g.iterate(force);
+    g.iterate(vertexForce);
 
     redraw(true);
 
@@ -66,8 +69,12 @@ function pause() {
 }
 
 function setup() {
+    locateImg.src = "img/locate.png";
+    crossImg.src = "img/cross.png";
+    compassImg.src = "img/compass.png";
+
     generateBtn?.addEventListener("click", event => {
-        g.randomGenerate(25);
+        g.randomGenerate(vertexCount);
         redraw(true);
     });
 
@@ -81,26 +88,8 @@ function setup() {
         redraw(true);
     })
 
-    playPauseBtn?.addEventListener("click", event => {
-        if (isPaused())
-            play();
-        else
-            pause();
-    });
-
     delaunayBtn?.addEventListener("click", event => {
-        // delaunay triangulation
-        d = new Delaunator(CANVAS_CENTER, CANVAS_SIZE, CANVAS_SIZE);
-        for (const v of g.vertices)
-            d.addPoint(v);
-        // build egdes from delaunay
-        g.clearEdges();
-        d.indicesOfTriangles.forEach(tri => {
-            g.connect(tri[0], tri[1]);
-            g.connect(tri[1], tri[2]);
-            g.connect(tri[2], tri[0]);
-        });
-
+        g.delaunate();
         redraw(true, false, false);
     });
 
@@ -110,15 +99,35 @@ function setup() {
     });
 
     pathBtn?.addEventListener("click", event => {
-        g.buildPaths(3);
+        g.buildPaths(pathCount);
         redraw(true);
     });
 
     mstpathBtn?.addEventListener("click", event => {
-        g.buildMSTPaths(3);
+        g.buildMSTPaths(pathCount);
         redraw(true);
     })
+
+    newmapBtn?.addEventListener("click", event => {
+        g.randomGenerate(vertexCount);
+        for (let i = 0; i < 100; i++)
+            g.iterate(vertexForce);
+        g.delaunate();
+        g.buildMSTPaths(pathCount);
+        for (let i = 0; i < 100; i++)
+            g.iterate(vertexForce);
+        redraw(true);
+    })
+
+    playPauseBtn?.addEventListener("click", event => {
+        if (isPaused())
+            play();
+        else
+            pause();
+    });
+
+    clearCanvas();
 }
 
 setup();
-play();
+pause();
