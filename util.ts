@@ -44,3 +44,12 @@ function getMousePos(canvas: HTMLCanvasElement, evt: MouseEvent) {
         evt.clientY - rect.top
     );
 }
+
+function remove(array: any[], key: any) {
+    const index = array.indexOf(key, 0);
+    if (index >= 0) {
+        array.splice(index, 1);
+        return true;
+    }
+    return false;
+}

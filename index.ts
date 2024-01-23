@@ -9,11 +9,11 @@ const canvas = <HTMLCanvasElement>document.getElementById("canvas");
 canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
 const ctx = canvas.getContext('2d');
-const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 4);
+const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 2);
 let d: Delaunator;
 
 let animationId: number | null = null;
-const count = 25;
+const count = 50;
 const chance = 0.1;
 const force = 1;
 const playPauseBtn = document.getElementById("play-pause");
@@ -22,6 +22,8 @@ const connectBtn = document.getElementById("connect");
 const clearconnectBtn = document.getElementById("clearconnect");
 const delaunayBtn = document.getElementById("delaunate");
 const mstBtn = document.getElementById("mst");
+const pathBtn = document.getElementById("path");
+const mstpathBtn = document.getElementById("mst-path");
 
 function clearCanvas() {
     if (!ctx) return;
@@ -65,12 +67,12 @@ function pause() {
 
 function setup() {
     generateBtn?.addEventListener("click", event => {
-        g.randomGenerate(count);
+        g.randomGenerate(25);
         redraw(true);
     });
 
     connectBtn?.addEventListener("click", event => {
-        g.randomConnect(chance);
+        g.randomConnect(20, 5, CANVAS_SIZE / 3);
         redraw(true);
     });
 
@@ -99,13 +101,23 @@ function setup() {
             g.connect(tri[2], tri[0]);
         });
 
-        redraw(false, false, true);
+        redraw(true, false, false);
     });
 
     mstBtn?.addEventListener("click", event => {
         g.buildMST();
         redraw(true);
     });
+
+    pathBtn?.addEventListener("click", event => {
+        g.buildPaths(3);
+        redraw(true);
+    });
+
+    mstpathBtn?.addEventListener("click", event => {
+        g.buildMSTPaths(3);
+        redraw(true);
+    })
 }
 
 setup();

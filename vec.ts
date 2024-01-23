@@ -35,7 +35,7 @@ class Vec {
         return this;
     }
     dot(v: Vec) {
-        return this.x * v.x + v.y * this.y + v.z * this.z;
+        return (v.x * this.x) + (v.y * this.y) + (v.z * this.z);
     }
     sqrMag() {
         return this.dot(this);
