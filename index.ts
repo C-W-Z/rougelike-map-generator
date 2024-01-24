@@ -137,7 +137,7 @@ function setup() {
     })
 
     newmapBtn?.addEventListener("click", event => {
-        m.generate(g);
+        m.generate(g, vertexCount, vertexForce, pathCount, deleteCount);
         m.decideRoomTypes(g);
         redraw();
     })

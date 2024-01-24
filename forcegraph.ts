@@ -498,7 +498,7 @@ const RoomType = {
     star: 0, // start room
     norm: 1, // normal enemy
     elit: 2, // elite enemy (hard)
-    rare: 3, // treasure
+    tres: 3, // treasure
     shop: 4, // merchant
     rest: 5, // rest room
     unkn: 6, // unknown (can be event/norm/rare/shop/rest)
@@ -514,8 +514,10 @@ const RoomFreq = [ // the weight of room to appear
     1, // rest room
     2, // unknown (can be event/norm/rare/shop/rest)
     1, // esoteric
-    0 // boss room
+    0, // boss room
 ];
+const RareRoomType = [RoomType.tres, RoomType.shop, RoomType.unkn, RoomType.esoc];
+const RareRoomFreq = RareRoomType.map(id => RoomFreq[id]);
 
 class RandomMap {
     private type: number[];
@@ -532,7 +534,7 @@ class RandomMap {
     public clear() {
         this.type = [];
     }
-    public generate(g: ForceGraph) {
+    public generate(g: ForceGraph, vertexCount: number, vertexForce: number, pathCount: number, deleteCount: number) {
         g.randomGenerate(vertexCount);
         g.iterate(vertexForce, 100);
         g.delaunate();
@@ -550,9 +552,7 @@ class RandomMap {
         return roll(RandomMap.numArr, RoomFreq)
     }
     private rollRareType() {
-        const type = [RoomType.rare, RoomType.shop, RoomType.unkn, RoomType.esoc];
-        const freq = type.map(id => RoomFreq[id]);
-        return roll(type, freq);
+        return roll(RareRoomType, RareRoomFreq);
     }
     public decideRoomTypes(g: ForceGraph) {
         const n = g.vertices.length;
@@ -578,19 +578,7 @@ class RandomMap {
                 this.type[v] = this.rollRareType();
         }
 
-        for (let i = 0; i < n; i++) {
-            if (g.adjacents(i).length == 1) {
-                // place treasure at leaf vertices
-                if (this.type[i] == RoomType.norm || this.type[i] == RoomType.elit)
-                    this.type[i] = RoomType.rare;
-                // fix nearly rare at leaf vertices first
-                const v = g.adjacents(i)[0];
-                if (this.type[i] == RoomType.rare && this.type[v] == RoomType.rare)
-                    this.type[v] = RoomType.elit;
-            }
-        }
-
-        // decrease the possibility that two treasure appear nearly
+        // decrease the possibility that two rare rooms appear nearly
         const fixNearSameType = (vToChange: number, type: number) => {
             if (this.type[vToChange] != type)
                 return;
@@ -604,17 +592,15 @@ class RandomMap {
 
         // fix nearly same types
         for (let i = 0; i < n; i++) {
-            fixNearSameType(i, RoomType.rare);
+            fixNearSameType(i, RoomType.tres);
             fixNearSameType(i, RoomType.esoc);
             fixNearSameType(i, RoomType.rest);
             fixNearSameType(i, RoomType.shop);
             if (this.type[i] != RoomType.elit) {
                 const adj = g.adjacents(i);
-                for (const u of adj) {
-                    if (this.type[u] != RoomType.elit)
-                        continue;
-                    this.type[i] = RoomType.norm;
-                }
+                for (const u of adj)
+                    if (this.type[u] == RoomType.elit)
+                        this.type[i] = RoomType.norm;
             }
         }
 
@@ -626,10 +612,8 @@ class RandomMap {
             if (i != g.start && i != g.end)
                 rooms[this.type[i]].push(i);
 
-
-        const fixCount = (type: number, anotherType: number, least: number, most: number = n) =>
-        {
-            let maxCheck = n;
+        const fixCount = (type: number, anotherType: number, least: number, most: number = n) => {
+            let maxCheck = Math.abs(least - rooms[type].length) * 2;
             while (rooms[type].length < least && maxCheck > 0) {
                 maxCheck--;
                 if (rooms[anotherType].length == 0) {
@@ -638,23 +622,23 @@ class RandomMap {
                 }
                 const id = randomInt(0, rooms[anotherType].length - 1);
                 const v = rooms[anotherType][id];
-                if (type == RoomType.elit && g.adjacents(v).includes(Number(g.start)))
+                // elite & rest should not appear near start point
+                if ((type == RoomType.elit || type == RoomType.rest) && g.adjacents(v).includes(Number(g.start)))
                     continue;
+                // change v from anotherType to type
                 rooms[type].push(v);
                 rooms[anotherType].splice(id, 1);
                 this.type[v] = type;
             }
-            maxCheck = n;
+            maxCheck = Math.abs(rooms[type].length - most) * 2;
             while (rooms[type].length > most && maxCheck > 0) {
                 maxCheck--;
-                if (rooms[anotherType].length == 0) {
-                    console.error("Not enough anotherType:", anotherType);
-                    return;
-                }
-                const id = randomInt(0, rooms[anotherType].length - 1);
-                const v = rooms[anotherType][id];
-                if (type == RoomType.elit && g.adjacents(v).includes(Number(g.start)))
+                const id = randomInt(0, rooms[type].length - 1);
+                const v = rooms[type][id];
+                // elite & rest should not appear near start point
+                if ((type == RoomType.elit || type == RoomType.rest) && g.adjacents(v).includes(Number(g.start)))
                     continue;
+                // change v from type to anotherType
                 rooms[anotherType].push(v);
                 rooms[type].splice(id, 1);
                 this.type[v] = anotherType;
@@ -663,12 +647,33 @@ class RandomMap {
 
         // fix if there are too few / much some types of rooms
         fixCount(RoomType.elit, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
-        fixCount(RoomType.rare, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
+        fixCount(RoomType.tres, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
         fixCount(RoomType.unkn, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
-        fixCount(RoomType.shop, RoomType.elit, Math.max(1, Math.floor(n * 0.05)), Math.floor(n * 0.2));
-        fixCount(RoomType.rest, RoomType.elit, 1, Math.floor(n * 0.1));
+        fixCount(RoomType.shop, RoomType.norm, Math.max(1, Math.floor(n * 0.05)), Math.floor(n * 0.2));
+        fixCount(RoomType.rest, RoomType.norm, 1, Math.floor(n * 0.1));
         fixCount(RoomType.esoc, RoomType.elit, 0, Math.floor(n * 0.12));
         fixCount(RoomType.norm, RoomType.elit, Math.floor(n * 0.3));
+
+        // fix leaf vertices
+        for (let i = 0; i < n; i++) {
+            if (g.adjacents(i).length == 1) {
+                // place rare rooms at leaf vertices
+                if (this.type[i] == RoomType.norm || this.type[i] == RoomType.elit) {
+                    remove(rooms[this.type[i]], i);
+                    this.type[i] = this.rollRareType();
+                    rooms[this.type[i]].push(i);
+                }
+                // fix nearly same rare rooms at leaf vertices
+                const v = g.adjacents(i)[0];
+                if (this.type[v] == this.type[i] && RareRoomType.includes(this.type[i])) {
+                    // console.log("rare to elite");
+                    remove(rooms[this.type[v]], v);
+                    this.type[v] = RoomType.elit;
+                    rooms[this.type[v]].push(v);
+                }
+            }
+        }
+
         fixCount(RoomType.elit, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
 
         // finally assign start/end type
@@ -678,12 +683,12 @@ class RandomMap {
         // rooms[RoomType.boss].push(g.end);
 
         console.log("norm:", rooms[RoomType.norm].length,
-                    "elit:", rooms[RoomType.elit].length,
-                    "rare:", rooms[RoomType.rare].length,
-                    "shop:", rooms[RoomType.shop].length,
-                    "rest:", rooms[RoomType.rest].length,
-                    "unkn:", rooms[RoomType.unkn].length,
-                    "esoc:", rooms[RoomType.esoc].length);
+            "elit:", rooms[RoomType.elit].length,
+            "rare:", rooms[RoomType.tres].length,
+            "shop:", rooms[RoomType.shop].length,
+            "rest:", rooms[RoomType.rest].length,
+            "unkn:", rooms[RoomType.unkn].length,
+            "esoc:", rooms[RoomType.esoc].length);
     }
     public render(ctx: CanvasRenderingContext2D | null, vertices: Vec[], img: HTMLImageElement[]) {
         if (!ctx) return;
@@ -696,6 +701,7 @@ class RandomMap {
             const icon = img[this.type[i]];
             const pos = vertices[i];
             if (this.type[i] == RoomType.boss)
+                // bigger icon for boss
                 ctx.drawImage(icon, pos.x - 16, pos.y - 16, 32, 32);
             else
                 ctx.drawImage(icon, pos.x - 8, pos.y - 8, 16, 16);
