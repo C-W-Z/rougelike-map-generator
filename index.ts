@@ -13,10 +13,18 @@ const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 2);
 const m = new RandomMap();
 
 let animationId: number | null = null;
-const vertexCount = 50;
-const vertexForce = 1.5;
-const pathCount = 12;
-const deleteCount = 5;
+let vertexCount = 50;
+let vertexForce = 1.5;
+let pathCount = 12;
+let deleteCount = 5;
+const vertexCountSlider = document.getElementById("vertexCount") as HTMLInputElement;
+const vertexCountText = document.getElementById("vertexCount-text");
+const vertexForceSlider = document.getElementById("vertexForce") as HTMLInputElement;
+const vertexForceText = document.getElementById("vertexForce-text");
+const pathCountSlider = document.getElementById("pathCount") as HTMLInputElement;
+const pathCountText = document.getElementById("pathCount-text");
+const deleteCountSlider = document.getElementById("deleteCount") as HTMLInputElement;
+const deleteCountText = document.getElementById("deleteCount-text");
 const playPauseBtn = document.getElementById("play-pause");
 const generateBtn = document.getElementById("generate");
 const connectBtn = document.getElementById("connect");
@@ -25,6 +33,7 @@ const delaunayBtn = document.getElementById("delaunate");
 const mstBtn = document.getElementById("mst");
 const pathBtn = document.getElementById("path");
 const mstpathBtn = document.getElementById("mst-path");
+const roomtypeBtn = document.getElementById("roomtype");
 const newmapBtn = document.getElementById("newmap");
 
 const MapIcons: HTMLImageElement[] = new Array();
@@ -65,13 +74,13 @@ function isPaused() {
 
 function play() {
     if (playPauseBtn)
-        playPauseBtn.textContent = "Pause";
+        playPauseBtn.textContent = "Stop Iteration";
     renderLoop();
 }
 
 function pause() {
     if (playPauseBtn)
-        playPauseBtn.textContent = "Play";
+        playPauseBtn.textContent = "Start Iteration";
     if (animationId)
         cancelAnimationFrame(animationId);
     animationId = null;
@@ -82,6 +91,8 @@ function setup() {
         MapIcons.push(new Image());
         MapIcons[i].onload = redraw;
     }
+    locateImg.onload = redraw;
+    compassImg.onload = redraw;
     MapIcons[0].src = "img/flag.png";
     MapIcons[1].src = "img/skull.png";
     MapIcons[2].src = "img/enemy.png";
@@ -93,6 +104,42 @@ function setup() {
     MapIcons[8].src = "img/cross.png";
     locateImg.src = "img/locate.png";
     compassImg.src = "img/compass.png";
+
+    if (vertexCountText) {
+        vertexCountText.textContent = vertexCount.toString();
+        vertexCountSlider.value = vertexCount.toString();
+        vertexCountSlider.addEventListener("input", event => {
+            vertexCountText.textContent = vertexCountSlider.value;
+            vertexCount = parseInt(vertexCountSlider.value);
+        });
+    }
+
+    if (vertexForceText) {
+        vertexForceText.textContent = vertexForce.toString();
+        vertexForceSlider.value = vertexForce.toString();
+        vertexForceSlider.addEventListener("input", event => {
+            vertexForceText.textContent = vertexForceSlider.value;
+            vertexForce = parseFloat(vertexForceSlider.value);
+        });
+    }
+
+    if (pathCountText) {
+        pathCountText.textContent = pathCount.toString();
+        pathCountSlider.value = pathCount.toString();
+        pathCountSlider.addEventListener("input", event => {
+            pathCountText.textContent = pathCountSlider.value;
+            pathCount = parseInt(pathCountSlider.value);
+        });
+    }
+
+    if (deleteCountText) {
+        deleteCountText.textContent = deleteCount.toString();
+        deleteCountSlider.value = deleteCount.toString();
+        deleteCountSlider.addEventListener("input", event => {
+            deleteCountText.textContent = deleteCountSlider.value;
+            deleteCount = parseInt(deleteCountSlider.value);
+        });
+    }
 
     generateBtn?.addEventListener("click", event => {
         g.randomGenerate(vertexCount);
@@ -110,7 +157,14 @@ function setup() {
         g.clearEdges();
         m.clear();
         redraw();
-    })
+    });
+
+    playPauseBtn?.addEventListener("click", event => {
+        if (isPaused())
+            play();
+        else
+            pause();
+    });
 
     delaunayBtn?.addEventListener("click", event => {
         g.delaunate();
@@ -134,19 +188,17 @@ function setup() {
         g.buildMSTPaths(pathCount);
         m.clear();
         redraw();
-    })
+    });
+
+    roomtypeBtn?.addEventListener("click", event => {
+        m.decideRoomTypes(g);
+        redraw();
+    });
 
     newmapBtn?.addEventListener("click", event => {
         m.generate(g, vertexCount, vertexForce, pathCount, deleteCount);
         m.decideRoomTypes(g);
         redraw();
-    })
-
-    playPauseBtn?.addEventListener("click", event => {
-        if (isPaused())
-            play();
-        else
-            pause();
     });
 
     clearCanvas();

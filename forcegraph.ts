@@ -420,12 +420,22 @@ class ForceGraph {
             console.error("find start / end error: ", [start, end]);
         return [start, end];
     }
+    private findDistant(start: number) {
+        
+    }
     public fixPathEnd() {
         // fix if no start / end vertex
         if (this.pathEnd[0] === null || this.pathEnd[1] === null) {
             const [start, end] = this.findPathEnd();
             this.pathEnd = [start, end];
         }
+
+        // if (this._vertices.length < 8 || this.adjacent[Number(this.start)].includes(Number(this.end)))
+        // {
+        //     this.pathEnd[1] = this.findDistant(Number(this.start));
+        //     return;
+        // }
+
         // fix if start / end vertex has adjacent leaf vertices
         for (let i = 0; i < 2; i++)
             for (const v of this.adjacent[Number(this.pathEnd[i])])
@@ -565,9 +575,11 @@ class RandomMap {
         for (let i = 0; i < n; i++)
             this.type[i] = this.rollAllType();
 
-        if (g.start === null || g.end === null || g.criticalPath.length == 0) {
-            console.error("Not found start/end/critical path of ", g);
-            return;
+        if (g.start === null || g.end === null || g.adjacents(g.start).includes(g.end)) {
+            console.error("Not found start / end of ", g);
+            g.fixPathEnd();
+            if (g.start === null || g.end === null)
+                return;
         }
 
         // elite & rest should not appear near start point
@@ -684,7 +696,7 @@ class RandomMap {
 
         console.log("norm:", rooms[RoomType.norm].length,
             "elit:", rooms[RoomType.elit].length,
-            "rare:", rooms[RoomType.tres].length,
+            "tres:", rooms[RoomType.tres].length,
             "shop:", rooms[RoomType.shop].length,
             "rest:", rooms[RoomType.rest].length,
             "unkn:", rooms[RoomType.unkn].length,

@@ -17,22 +17,124 @@
             align-items: center;
             justify-content: center;
         }
+        section, #canvas {
+            margin: 5px;
+        }
+        #params .row {
+            width: 100%;
+            display: grid;
+            grid: 1fr 1fr 1fr;
+            grid-template-columns: 90px 200px 25px;
+        }
+        #params .num {
+            text-align: end;
+        }
+        #icon-display {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        #icon-display img {
+            max-height: 24px;
+            max-width: 24px;
+            margin: 0 5px;
+        }
+        #icon-display .row{
+            margin: 5px 0;
+        }
+        button {
+            width: 150px;
+            margin: 5px 0;
+        }
     </style>
 </head>
 
-<body class="row">
-    <div class="col">
-        <button id="generate">Generate</button>
-        <button id="connect">Connect</button>
-        <button id="clearconnect">Clear Connect</button>
-        <button id="delaunate">Delaunay Triangulate</button>
-        <button id="mst">Build MST</button>
-        <button id="path">Build Path</button>
-        <button id="mst-path">Merge MST & Path</button>
-        <button id="newmap">New Map</button>
-        <button id="play-pause"></button>
-    </div>
-    <canvas id="canvas"></canvas>
+<body class="col">
+    <main class="row">
+        <section class="ui col">
+            <section class="col" id="params">
+                <div class="row">
+                    <span>Vertex Count</span>
+                    <input type="range" min="5" max="75" step="1" value="50" id="vertexCount">
+                    <span class="num" id="vertexCount-text">50</span>
+                </div>
+                <div class="row">
+                    <span>Vertex Force</span>
+                    <input type="range" min="0" max="10" step="0.25" value="1.5" id="vertexForce">
+                    <span class="num" id="vertexForce-text">1.5</span>
+                </div>
+                <div class="row">
+                    <span>Path Count</span>
+                    <input type="range" min="0" max="20" step="1" value="12" id="pathCount">
+                    <span class="num" id="pathCount-text">12</span>
+                </div>
+                <div class="row">
+                    <span>Edge Delete</span>
+                    <input type="range" min="0" max="20" step="1" value="5" id="deleteCount">
+                    <span class="num" id="deleteCount-text">5</span>
+                </div>
+            </section>
+            <section class="col">
+                <button id="generate">Generate</button>
+                <button id="connect">Connect</button>
+                <button id="clearconnect">Clear Connect</button>
+                <button id="play-pause"></button>
+                <button id="delaunate">Delaunay Triangulate</button>
+                <button id="mst">Build MST</button>
+                <button id="path">Build Path</button>
+                <button id="mst-path">Merge MST & Path</button>
+                <button id="roomtype">Decide Room Type</button>
+                <button id="newmap">New Map</button>
+            </section>
+        </section>
+        <canvas id="canvas"></canvas>
+        <section id="icon-display">
+            <div class="row">
+                <img src="img/locate.png" alt="player">
+                <span id="player">Player</span>
+            </div>
+            <div class="row">
+                <img src="img/flag.png" alt="start">
+                <span id="start">Start</span>
+            </div>
+            <div class="row">
+                <img src="img/skull.png" alt="enamy">
+                <span id="enemy">Enemy</span>
+            </div>
+            <div class="row">
+                <img src="img/enemy.png" alt="elite">
+                <span id="elite">Elite</span>
+            </div>
+            <div class="row">
+                <img src="img/key.png" alt="treasure">
+                <span id="treasure">Treasure</span>
+            </div>
+            <div class="row">
+                <img src="img/money.png" alt="merchant">
+                <span id="merchant">Merchant</span>
+            </div>
+            <div class="row">
+                <img src="img/bonfire.png" alt="rest">
+                <span id="rest">Rest</span>
+            </div>
+            <div class="row">
+                <img src="img/question-mark.png" alt="unknown">
+                <span id="unknown">Unknown</span>
+            </div>
+            <div class="row">
+                <img src="img/rune.png" alt="esoteric">
+                <span id="esoteric">Esoteric</span>
+            </div>
+            <div class="row">
+                <img src="img//cross.png" alt="boss">
+                <span id="boss">Boss</span>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <a href="https://github.com/C-W-Z/RougelikeMapGenerator" target="_blank">© 2024 C-W-Z</a>
+    </footer>
     <script src="./vec.js"></script>
     <script src="./util.js"></script>
     <script src="./delaunator.js"></script>
