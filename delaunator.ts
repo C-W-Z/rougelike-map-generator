@@ -10,7 +10,7 @@ function circumcircle(triangle: Vec[]) {
     const v2 = Vec.sub(p3, p2);
     const d1 = Vec.add(p2, p1).mult(0.5).dot(v1);
     const d2 = Vec.add(p3, p2).mult(0.5).dot(v2);
-    const det = -Vec.cross(v1, v2).z;
+    const det = -Vec.cross(v1, v2);
     if (det !== 0) {
         const x = (d2 * v1.y - d1 * v2.y) / det;
         const y = (d1 * v2.x - d2 * v1.x) / det;
@@ -30,35 +30,11 @@ class Delaunator { // Bowyer–Watson algorithm
     private oppoTriangles: Map<number[], (number[] | null)[]>;
     private circumcircles: Map<number[], { center: Vec, radius: number, rr: number } | null>;
     private _hasUpdateTrianglesIndices: boolean = true;
-    private _trianglesIndices: number[][];
+    private _trianglesIndices: number[][] = [];
     private _hasUpdateTrianglesPoints: boolean = true;
-    private _trianglesPoints: Vec[][];
+    private _trianglesPoints: Vec[][] = [];
     private _hasUpdateVoronoiCellsPoints: boolean = true;
-    private _voronoiCellsPoints: Vec[][];
-    public get vertices() {
-        return this.coords;
-    }
-    public get indicesOfTriangles() {
-        if (!this._hasUpdateTrianglesIndices) {
-            this._trianglesIndices = this.getTrianglesIndices();
-            this._hasUpdateTrianglesIndices = true;
-        }
-        return this._trianglesIndices;
-    }
-    public get pointsOfTriangles() {
-        if (!this._hasUpdateTrianglesPoints) {
-            this._trianglesPoints = this.getTrianglesPoints();
-            this._hasUpdateTrianglesPoints = true;
-        }
-        return this._trianglesPoints;
-    }
-    public get pointsOfVoronoiCells() {
-        if (!this._hasUpdateVoronoiCellsPoints) {
-            this._voronoiCellsPoints = this.getVoronoiCellsPoints();
-            this._hasUpdateVoronoiCellsPoints = true;
-        }
-        return this._voronoiCellsPoints;
-    }
+    private _voronoiCellsPoints: Vec[][] = [];
     constructor(center: Vec, width: number, height: number) {
         const halfSize = Math.max(width, height) * 10;
         // 建立一個比畫布大一點的正方形
@@ -88,6 +64,30 @@ class Delaunator { // Bowyer–Watson algorithm
         // 設定初始的兩個外接圓
         this.circumcircles.set(t1, circumcircle(t1.map(i => this.coords[i])));
         this.circumcircles.set(t2, circumcircle(t2.map(i => this.coords[i])));
+    }
+    public get vertices() {
+        return this.coords;
+    }
+    public get indicesOfTriangles() {
+        if (!this._hasUpdateTrianglesIndices) {
+            this._trianglesIndices = this.getTrianglesIndices();
+            this._hasUpdateTrianglesIndices = true;
+        }
+        return this._trianglesIndices;
+    }
+    public get pointsOfTriangles() {
+        if (!this._hasUpdateTrianglesPoints) {
+            this._trianglesPoints = this.getTrianglesPoints();
+            this._hasUpdateTrianglesPoints = true;
+        }
+        return this._trianglesPoints;
+    }
+    public get pointsOfVoronoiCells() {
+        if (!this._hasUpdateVoronoiCellsPoints) {
+            this._voronoiCellsPoints = this.getVoronoiCellsPoints();
+            this._hasUpdateVoronoiCellsPoints = true;
+        }
+        return this._voronoiCellsPoints;
     }
     private inCircumcircle(point: Vec, triangle: number[]) {
         const c = this.circumcircles.get(triangle);
@@ -252,7 +252,7 @@ class Delaunator { // Bowyer–Watson algorithm
     private voronoi() {
         const tris = Array.from(this.oppoTriangles.keys());
         // 收集外接圓心（Voronoi 細胞頂點）
-        const vertices: Vec[] = tris.flatMap(t => {
+        const vertices: Vec[] = tris.flatMap((t: number[]) => {
             const v = this.circumcircles.get(t);
             return v ? [v.center] : [];
         });

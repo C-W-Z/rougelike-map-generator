@@ -494,7 +494,6 @@ class ForceGraph {
     }
 }
 
-
 const RoomType = {
     star: 0, // start room
     norm: 1, // normal enemy

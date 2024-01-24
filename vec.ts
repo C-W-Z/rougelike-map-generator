@@ -1,11 +1,9 @@
 class Vec {
     public x: number;
     public y: number;
-    public z: number;
-    constructor(x: number, y: number, z: number = 0) {
+    constructor(x: number, y: number) {
         this.x = x;
         this.y = y;
-        this.z = z;
     }
     neg() {
         return Vec.mult(this, -1);
@@ -13,29 +11,25 @@ class Vec {
     add(v: Vec) {
         this.x += v.x;
         this.y += v.y;
-        this.z += v.z;
         return this;
     }
     sub(v: Vec) {
         this.x -= v.x;
         this.y -= v.y;
-        this.z -= v.z;
         return this;
     }
     mult(scale: number) {
         this.x *= scale;
         this.y *= scale;
-        this.z *= scale;
         return this;
     }
     div(scale: number) {
         this.x /= scale;
         this.y /= scale;
-        this.z /= scale;
         return this;
     }
     dot(v: Vec) {
-        return (v.x * this.x) + (v.y * this.y) + (v.z * this.z);
+        return (v.x * this.x) + (v.y * this.y);
     }
     sqrMag() {
         return this.dot(this);
@@ -45,19 +39,19 @@ class Vec {
     }
     normalized() {
         const mag = this.mag();
-        return new Vec(this.x / mag, this.y / mag, this.z / mag);
+        return new Vec(this.x / mag, this.y / mag);
     }
     static add(u: Vec, v: Vec) {
-        return new Vec(u.x + v.x, u.y + v.y, u.z + v.z);
+        return new Vec(u.x + v.x, u.y + v.y);
     }
     static sub(u: Vec, v: Vec) {
-        return new Vec(u.x - v.x, u.y - v.y, u.z - v.z);
+        return new Vec(u.x - v.x, u.y - v.y);
     }
     static mult(v: Vec, scale: number) {
-        return new Vec(v.x * scale, v.y * scale, v.z * scale);
+        return new Vec(v.x * scale, v.y * scale);
     }
     static div(v: Vec, scale: number) {
-        return new Vec(v.x / scale, v.y / scale, v.z / scale);
+        return new Vec(v.x / scale, v.y / scale);
     }
     static dist(u: Vec, v: Vec) {
         return Vec.sub(u, v).mag();
@@ -69,14 +63,6 @@ class Vec {
         return u.dot(v);
     }
     static cross(u: Vec, v: Vec) {
-        return new Vec(u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x);
-    }
-    private static _epsilon = 0.001;
-    static equal(u: Vec, v: Vec) {
-        return Math.abs(u.x - v.x) < Vec._epsilon && Math.abs(u.y - v.y) < Vec._epsilon;
-    }
-    private static _zero = new Vec(0, 0, 0);
-    static get zero() {
-        return Vec._zero;
+        return u.x * v.y - u.y * v.x
     }
 }

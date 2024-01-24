@@ -37,11 +37,10 @@ function clearCanvas() {
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 }
 
-function redraw(forceGraph: boolean, delaunay: boolean = false, voronoi: boolean = false) {
+function redraw() {
     if (!ctx) return;
     clearCanvas();
-    if (forceGraph)
-        g.render(ctx, VERTEX_RADIUS, VERTEX_COLOR, EDGE_WIDTH, EDGE_COLOR);
+    g.render(ctx, VERTEX_RADIUS, VERTEX_COLOR, EDGE_WIDTH, EDGE_COLOR);
     // draw start & end icon
     if (m.roomType.length == g.vertices.length && g.start !== null) {
         m.render(ctx, g.vertices, MapIcons);
@@ -55,7 +54,7 @@ function redraw(forceGraph: boolean, delaunay: boolean = false, voronoi: boolean
 function renderLoop() {
     g.iterate(vertexForce);
 
-    redraw(true);
+    redraw();
 
     animationId = requestAnimationFrame(renderLoop);
 };
@@ -79,8 +78,10 @@ function pause() {
 }
 
 function setup() {
-    for (let i = 0; i < RoomFreq.length; i++)
+    for (let i = 0; i < RoomFreq.length; i++) {
         MapIcons.push(new Image());
+        MapIcons[i].onload = redraw;
+    }
     MapIcons[0].src = "img/flag.png";
     MapIcons[1].src = "img/skull.png";
     MapIcons[2].src = "img/enemy.png";
@@ -96,49 +97,49 @@ function setup() {
     generateBtn?.addEventListener("click", event => {
         g.randomGenerate(vertexCount);
         m.clear();
-        redraw(true);
+        redraw();
     });
 
     connectBtn?.addEventListener("click", event => {
         g.randomConnect(20, 5, CANVAS_SIZE / 3);
         m.clear();
-        redraw(true);
+        redraw();
     });
 
     clearconnectBtn?.addEventListener("click", event => {
         g.clearEdges();
         m.clear();
-        redraw(true);
+        redraw();
     })
 
     delaunayBtn?.addEventListener("click", event => {
         g.delaunate();
         m.clear();
-        redraw(true, false, false);
+        redraw();
     });
 
     mstBtn?.addEventListener("click", event => {
         g.buildMST();
         m.clear();
-        redraw(true);
+        redraw();
     });
 
     pathBtn?.addEventListener("click", event => {
         g.buildPaths(pathCount);
         m.clear();
-        redraw(true);
+        redraw();
     });
 
     mstpathBtn?.addEventListener("click", event => {
         g.buildMSTPaths(pathCount);
         m.clear();
-        redraw(true);
+        redraw();
     })
 
     newmapBtn?.addEventListener("click", event => {
         m.generate(g);
         m.decideRoomTypes(g);
-        redraw(true);
+        redraw();
     })
 
     playPauseBtn?.addEventListener("click", event => {
@@ -149,6 +150,7 @@ function setup() {
     });
 
     clearCanvas();
+    newmapBtn?.click();
 }
 
 setup();
