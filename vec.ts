@@ -59,8 +59,11 @@ class Vec {
     static div(v: Vec, scale: number) {
         return new Vec(v.x / scale, v.y / scale, v.z / scale);
     }
-    static distance(u: Vec, v: Vec) {
+    static dist(u: Vec, v: Vec) {
         return Vec.sub(u, v).mag();
+    }
+    static sqrDist(u: Vec, v: Vec) {
+        return Vec.sub(u, v).sqrMag();
     }
     static dot(u: Vec, v: Vec) {
         return u.dot(v);

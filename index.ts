@@ -10,11 +10,12 @@ canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
 const ctx = canvas.getContext('2d');
 const g = new ForceGraph(CANVAS_CENTER, CANVAS_SIZE / 2);
+const m = new RandomMap();
 
 let animationId: number | null = null;
-const vertexCount = 60;
-const vertexForce = 1;
-const pathCount = 8;
+const vertexCount = 50;
+const vertexForce = 1.5;
+const pathCount = 12;
 const deleteCount = 5;
 const playPauseBtn = document.getElementById("play-pause");
 const generateBtn = document.getElementById("generate");
@@ -26,9 +27,9 @@ const pathBtn = document.getElementById("path");
 const mstpathBtn = document.getElementById("mst-path");
 const newmapBtn = document.getElementById("newmap");
 
-const locateImg = new Image();
-const crossImg = new Image();
+const MapIcons: HTMLImageElement[] = new Array();
 const compassImg = new Image();
+const locateImg = new Image();
 
 function clearCanvas() {
     if (!ctx) return;
@@ -42,14 +43,13 @@ function redraw(forceGraph: boolean, delaunay: boolean = false, voronoi: boolean
     if (forceGraph)
         g.render(ctx, VERTEX_RADIUS, VERTEX_COLOR, EDGE_WIDTH, EDGE_COLOR);
     // draw start & end icon
-    if (g.start !== null && g.end !== null) {
-        let p = g.vertices[g.start];
-        ctx.drawImage(locateImg, p.x - 16, p.y - 32, 32, 32);
-        p = g.vertices[g.end];
-        ctx.drawImage(crossImg, p.x - 16, p.y - 16, 32, 32);
+    if (m.roomType.length == g.vertices.length && g.start !== null) {
+        m.render(ctx, g.vertices, MapIcons);
+        // draw location pin icon
+        ctx.drawImage(locateImg, g.vertices[g.start].x - 16, g.vertices[g.start].y - 32, 32, 32);
+        // draw compass icon
+        ctx.drawImage(compassImg, CANVAS_SIZE - 64 - 16, 16, 64, 64);
     }
-    // draw compass icon
-    ctx.drawImage(compassImg, CANVAS_SIZE - 64 - 16, 16, 64, 64);
 }
 
 function renderLoop() {
@@ -79,61 +79,65 @@ function pause() {
 }
 
 function setup() {
+    for (let i = 0; i < RoomFreq.length; i++)
+        MapIcons.push(new Image());
+    MapIcons[0].src = "img/flag.png";
+    MapIcons[1].src = "img/skull.png";
+    MapIcons[2].src = "img/enemy.png";
+    MapIcons[3].src = "img/key.png";
+    MapIcons[4].src = "img/money.png";
+    MapIcons[5].src = "img/bonfire.png";
+    MapIcons[6].src = "img/question-mark.png";
+    MapIcons[7].src = "img/rune.png";
+    MapIcons[8].src = "img/cross.png";
     locateImg.src = "img/locate.png";
-    crossImg.src = "img/cross.png";
     compassImg.src = "img/compass.png";
 
     generateBtn?.addEventListener("click", event => {
         g.randomGenerate(vertexCount);
+        m.clear();
         redraw(true);
     });
 
     connectBtn?.addEventListener("click", event => {
         g.randomConnect(20, 5, CANVAS_SIZE / 3);
+        m.clear();
         redraw(true);
     });
 
     clearconnectBtn?.addEventListener("click", event => {
         g.clearEdges();
+        m.clear();
         redraw(true);
     })
 
     delaunayBtn?.addEventListener("click", event => {
         g.delaunate();
+        m.clear();
         redraw(true, false, false);
     });
 
     mstBtn?.addEventListener("click", event => {
         g.buildMST();
+        m.clear();
         redraw(true);
     });
 
     pathBtn?.addEventListener("click", event => {
         g.buildPaths(pathCount);
+        m.clear();
         redraw(true);
     });
 
     mstpathBtn?.addEventListener("click", event => {
         g.buildMSTPaths(pathCount);
+        m.clear();
         redraw(true);
     })
 
     newmapBtn?.addEventListener("click", event => {
-        g.randomGenerate(vertexCount);
-        for (let i = 0; i < 100; i++)
-            g.iterate(vertexForce);
-        g.delaunate();
-        for (let i = 0; i < 100; i++)
-            g.iterate(vertexForce);
-        g.delaunate();
-        g.buildMSTPaths(pathCount);
-        for (let i = 0; i < 100; i++)
-            g.iterate(vertexForce);
-        g.delaunate();
-        g.buildMSTPaths(pathCount);
-        g.randomDeleteEdge(deleteCount);
-        g.fixPathEnd();
-        g.calculateFitness();
+        m.generate(g);
+        m.decideRoomTypes(g);
         redraw(true);
     })
 

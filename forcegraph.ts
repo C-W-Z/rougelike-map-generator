@@ -96,13 +96,16 @@ class ForceGraph {
     private _vertices: Vec[]; // the coordinates of vertices
     private adjacent: number[][]; // adjacent[i] => adjacent vertices id of vertex i
     private matrix: boolean[][]; // adjacency matrix
-    private pathEnd: [number | null, number | null] = [null, null];
+    private pathEnd: [number | null, number | null];
+    private cPath: number[];
     constructor(center: Vec, expectedSize: number) {
         this.center = center;
         this.expectedSize = expectedSize;
         this._vertices = [];
         this.adjacent = [];
         this.matrix = [];
+        this.pathEnd = [null, null];
+        this.cPath = [];
     }
     public get vertices() {
         return this._vertices;
@@ -112,6 +115,12 @@ class ForceGraph {
     }
     public get end() {
         return this.pathEnd[1];
+    }
+    public get criticalPath() {
+        return this.cPath;
+    }
+    public adjacents(v: number) {
+        return this.adjacent[v];
     }
     public clearEdges() {
         for (let i = 0; i < this._vertices.length; i++) {
@@ -154,6 +163,7 @@ class ForceGraph {
         this.adjacent = [];
         this.matrix = [];
         this.pathEnd = [null, null];
+        this.cPath = [];
         // 隨機生成 Vertices
         for (let i = 0; i < generateCount; i++) {
             this._vertices.push(
@@ -173,7 +183,7 @@ class ForceGraph {
             const i = randomInt(0, this._vertices.length - 1);
             const j = randomInt(0, this._vertices.length - 1);
             if (this.adjacent[i].length < maxAdjacentCount && this.adjacent[j].length < maxAdjacentCount &&
-                Vec.distance(this._vertices[i], this._vertices[j]) < maxDistance)
+                Vec.dist(this._vertices[i], this._vertices[j]) < maxDistance)
                 this.connect(i, j);
             maxNewConnect--;
         }
@@ -182,7 +192,7 @@ class ForceGraph {
         const dir = Vec.sub(vertex, targetPos).normalized();
         vertex.add(Vec.mult(dir, moveSpeed));
     }
-    public iterate(moveSpeed: number) {
+    private iterateStep(moveSpeed: number) {
         /* reference: https://youtu.be/TXi5gA-pSkY?si=ylsXEAxPUTZ-IeKY */
         for (let i = 0; i < this._vertices.length; i++) {
             const vi = this._vertices[i];
@@ -192,7 +202,7 @@ class ForceGraph {
                 const vj = this._vertices[j];
                 if (i == j)
                     continue;
-                const dist = Vec.distance(vi, vj) / (this.expectedSize / 2);
+                const dist = Vec.dist(vi, vj) / (this.expectedSize / 2);
                 if (this.connected(i, j))
                     // vi be pulled by vj if connected
                     ForceGraph.move(vi, vj, -moveSpeed * clamp(dist, 0, 1));
@@ -200,6 +210,10 @@ class ForceGraph {
                 ForceGraph.move(vi, vj, moveSpeed * (1 - clamp(dist, 0, 1)));
             }
         }
+    }
+    public iterate(moveSpeed: number, iterateTime: number = 1) {
+        for (let i = 0; i < iterateTime; i++)
+            this.iterateStep(moveSpeed);
     }
     public render(ctx: CanvasRenderingContext2D | null, vertexRadius: number, vertexColor: string, edgeWidth: number, edgeColor: string) {
         if (!ctx) return;
@@ -233,7 +247,7 @@ class ForceGraph {
         for (let i = 0; i < this._vertices.length; i++)
             for (let j = i + 1; j < this._vertices.length; j++)
                 if (this.connected(i, j))
-                    edges.push([Vec.distance(this._vertices[i], this._vertices[j]), i, j]);
+                    edges.push([Vec.sqrDist(this._vertices[i], this._vertices[j]), i, j]);
         if (edges.length < this._vertices.length - 1) {
             console.error("Not Enough edges in", edges);
             return [];
@@ -289,7 +303,7 @@ class ForceGraph {
 
             for (const v of adjacency[cur]) {
                 if (visited[v]) continue;
-                const weight = Vec.distance(this._vertices[cur], this._vertices[v]);
+                const weight = Vec.sqrDist(this._vertices[cur], this._vertices[v]);
                 if (dist[cur] + weight < dist[v]) {
                     dist[v] = dist[cur] + weight;
                     prev[v] = cur;
@@ -315,10 +329,13 @@ class ForceGraph {
             return [];
         }
 
+        this.cPath = [];
         const paths: number[][] = []
         while (pathCount > 0) {
             const newPath = this.findPath(this.adjacent, start, end);
             paths.push(newPath);
+            if (this.cPath.length == 0)
+                this.cPath = newPath;
             pathCount--;
             if (pathCount <= 0)
                 break;
@@ -393,10 +410,10 @@ class ForceGraph {
         const rightTop = Vec.add(this.center, new Vec(this.expectedSize, -this.expectedSize));
         const leftBottom = Vec.add(this.center, new Vec(-this.expectedSize, this.expectedSize));
         for (let i = 0; i < this._vertices.length; i++) {
-            if (Vec.distance(leftBottom, this._vertices[i]) < Vec.distance(leftBottom, this._vertices[start]))
+            if (Vec.sqrDist(leftBottom, this._vertices[i]) < Vec.sqrDist(leftBottom, this._vertices[start]))
                 start = i;
             if (i == start) continue;
-            if (Vec.distance(rightTop, this._vertices[i]) < Vec.distance(rightTop, this._vertices[end]))
+            if (Vec.sqrDist(rightTop, this._vertices[i]) < Vec.sqrDist(rightTop, this._vertices[end]))
                 end = i;
         }
         if (start == end || start === null || end === null)
@@ -435,13 +452,13 @@ class ForceGraph {
             if (this.adjacent[v].length == 0)
                 continue;
             const u = this.adjacent[v][randomInt(0, this.adjacent[v].length - 1)];
-            if (canDeleteEdgeOn(u)) {
+            if (canDeleteEdgeOn(v) && canDeleteEdgeOn(u)) {
                 this.unconnect(v, u);
                 count++;
             }
         }
 
-        console.log("delete " + count);
+        // console.log("delete " + count);
     }
     public calculateFitness() {
         let count1 = 0;
@@ -471,7 +488,218 @@ class ForceGraph {
                 maxBadLen = Math.max(maxBadLen, len);
             }
         }
-        console.log("count: " + count1, count2, badCount, maxBadLen);
+        const score = -count1 * 5 - count2 - badCount * 5 - maxBadLen * 10;
+        console.log("count: ", count1, count2, badCount, maxBadLen, "score: ", score);
         return [count1, count2, badCount, maxBadLen];
+    }
+}
+
+
+const RoomType = {
+    star: 0, // start room
+    norm: 1, // normal enemy
+    elit: 2, // elite enemy (hard)
+    rare: 3, // treasure
+    shop: 4, // merchant
+    rest: 5, // rest room
+    unkn: 6, // unknown (can be event/norm/rare/shop/rest)
+    esoc: 7, // esoteric
+    boss: 8, // boss room
+}
+const RoomFreq = [ // the weight of room to appear
+    0, // start room
+    9, // normal enemy
+    4, // elite enemy (hard)
+    2, // treasure
+    1, // merchant
+    1, // rest room
+    2, // unknown (can be event/norm/rare/shop/rest)
+    1, // esoteric
+    0 // boss room
+];
+
+class RandomMap {
+    private type: number[];
+    private static numArr: number[] = [];
+    constructor() {
+        this.type = [];
+        RandomMap.numArr = new Array(RoomFreq.length);
+        for (let i = 0; i < RandomMap.numArr.length; i++)
+            RandomMap.numArr[i] = i;
+    }
+    public get roomType() {
+        return this.type;
+    }
+    public clear() {
+        this.type = [];
+    }
+    public generate(g: ForceGraph) {
+        g.randomGenerate(vertexCount);
+        g.iterate(vertexForce, 100);
+        g.delaunate();
+        g.iterate(vertexForce, 100);
+        g.delaunate();
+        g.buildMSTPaths(pathCount);
+        g.iterate(vertexForce, 100);
+        g.delaunate();
+        g.buildMSTPaths(pathCount);
+        g.randomDeleteEdge(deleteCount);
+        g.fixPathEnd();
+        // g.calculateFitness();
+    }
+    private rollAllType() {
+        return roll(RandomMap.numArr, RoomFreq)
+    }
+    private rollRareType() {
+        const type = [RoomType.rare, RoomType.shop, RoomType.unkn, RoomType.esoc];
+        const freq = type.map(id => RoomFreq[id]);
+        return roll(type, freq);
+    }
+    public decideRoomTypes(g: ForceGraph) {
+        const n = g.vertices.length;
+
+        this.type = [];
+        for (let i = 0; i < n; i++)
+            this.type.push(-1);
+
+        /* random decide types */
+        for (let i = 0; i < n; i++)
+            this.type[i] = this.rollAllType();
+
+        if (g.start === null || g.end === null || g.criticalPath.length == 0) {
+            console.error("Not found start/end/critical path of ", g);
+            return;
+        }
+
+        // elite & rest should not appear near start point
+        for (const v of g.adjacents(g.start)) {
+            if (this.type[v] === RoomType.elit)
+                this.type[v] = RoomType.norm;
+            if (this.type[v] === RoomType.rest)
+                this.type[v] = this.rollRareType();
+        }
+
+        for (let i = 0; i < n; i++) {
+            if (g.adjacents(i).length == 1) {
+                // place treasure at leaf vertices
+                if (this.type[i] == RoomType.norm || this.type[i] == RoomType.elit)
+                    this.type[i] = RoomType.rare;
+                // fix nearly rare at leaf vertices first
+                const v = g.adjacents(i)[0];
+                if (this.type[i] == RoomType.rare && this.type[v] == RoomType.rare)
+                    this.type[v] = RoomType.elit;
+            }
+        }
+
+        // decrease the possibility that two treasure appear nearly
+        const fixNearSameType = (vToChange: number, type: number) => {
+            if (this.type[vToChange] != type)
+                return;
+            const adj = g.adjacents(vToChange);
+            for (const u of adj) {
+                if (this.type[u] != type)
+                    continue;
+                this.type[vToChange] = this.rollRareType();
+            }
+        }
+
+        // fix nearly same types
+        for (let i = 0; i < n; i++) {
+            fixNearSameType(i, RoomType.rare);
+            fixNearSameType(i, RoomType.esoc);
+            fixNearSameType(i, RoomType.rest);
+            fixNearSameType(i, RoomType.shop);
+            if (this.type[i] != RoomType.elit) {
+                const adj = g.adjacents(i);
+                for (const u of adj) {
+                    if (this.type[u] != RoomType.elit)
+                        continue;
+                    this.type[i] = RoomType.norm;
+                }
+            }
+        }
+
+        // calculate rooms
+        const rooms: number[][] = [];
+        for (let i = 0; i < RoomFreq.length; i++)
+            rooms.push([]);
+        for (let i = 0; i < n; i++)
+            if (i != g.start && i != g.end)
+                rooms[this.type[i]].push(i);
+
+
+        const fixCount = (type: number, anotherType: number, least: number, most: number = n) =>
+        {
+            let maxCheck = n;
+            while (rooms[type].length < least && maxCheck > 0) {
+                maxCheck--;
+                if (rooms[anotherType].length == 0) {
+                    console.error("Not enough anotherType:", anotherType);
+                    return;
+                }
+                const id = randomInt(0, rooms[anotherType].length - 1);
+                const v = rooms[anotherType][id];
+                if (type == RoomType.elit && g.adjacents(v).includes(Number(g.start)))
+                    continue;
+                rooms[type].push(v);
+                rooms[anotherType].splice(id, 1);
+                this.type[v] = type;
+            }
+            maxCheck = n;
+            while (rooms[type].length > most && maxCheck > 0) {
+                maxCheck--;
+                if (rooms[anotherType].length == 0) {
+                    console.error("Not enough anotherType:", anotherType);
+                    return;
+                }
+                const id = randomInt(0, rooms[anotherType].length - 1);
+                const v = rooms[anotherType][id];
+                if (type == RoomType.elit && g.adjacents(v).includes(Number(g.start)))
+                    continue;
+                rooms[anotherType].push(v);
+                rooms[type].splice(id, 1);
+                this.type[v] = anotherType;
+            }
+        }
+
+        // fix if there are too few / much some types of rooms
+        fixCount(RoomType.elit, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
+        fixCount(RoomType.rare, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
+        fixCount(RoomType.unkn, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
+        fixCount(RoomType.shop, RoomType.elit, Math.max(1, Math.floor(n * 0.05)), Math.floor(n * 0.2));
+        fixCount(RoomType.rest, RoomType.elit, 1, Math.floor(n * 0.1));
+        fixCount(RoomType.esoc, RoomType.elit, 0, Math.floor(n * 0.12));
+        fixCount(RoomType.norm, RoomType.elit, Math.floor(n * 0.3));
+        fixCount(RoomType.elit, RoomType.norm, Math.floor(n * 0.1), Math.floor(n * 0.2));
+
+        // finally assign start/end type
+        this.type[g.start] = RoomType.star;
+        this.type[g.end] = RoomType.boss;
+        // rooms[RoomType.star].push(g.start);
+        // rooms[RoomType.boss].push(g.end);
+
+        console.log("norm:", rooms[RoomType.norm].length,
+                    "elit:", rooms[RoomType.elit].length,
+                    "rare:", rooms[RoomType.rare].length,
+                    "shop:", rooms[RoomType.shop].length,
+                    "rest:", rooms[RoomType.rest].length,
+                    "unkn:", rooms[RoomType.unkn].length,
+                    "esoc:", rooms[RoomType.esoc].length);
+    }
+    public render(ctx: CanvasRenderingContext2D | null, vertices: Vec[], img: HTMLImageElement[]) {
+        if (!ctx) return;
+        if (vertices.length != this.type.length) {
+            console.error("Map Render Error");
+            return;
+        }
+
+        for (let i = 0; i < vertices.length; i++) {
+            const icon = img[this.type[i]];
+            const pos = vertices[i];
+            if (this.type[i] == RoomType.boss)
+                ctx.drawImage(icon, pos.x - 16, pos.y - 16, 32, 32);
+            else
+                ctx.drawImage(icon, pos.x - 8, pos.y - 8, 16, 16);
+        }
     }
 }

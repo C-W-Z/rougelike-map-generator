@@ -62,3 +62,17 @@ function remove(array: any[], key: any) {
     }
     return false;
 }
+
+function roll(type: number[], freq: number[]) {
+    let sum = 0;
+    for (const f of freq)
+        sum += f;
+    let rand = randomFloat(0, sum);
+    for (let i = 0; i < freq.length; i++) {
+        const f = freq[i];
+        rand -= f;
+        if (rand <= 0)
+            return type[i];
+    }
+    return type[randomInt(0, type.length - 1)];
+}
