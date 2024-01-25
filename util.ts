@@ -63,7 +63,7 @@ function remove(array: any[], key: any) {
     return false;
 }
 
-function roll(type: number[], freq: number[]) {
+function roll(type: number[], freq: number[]) { // Roulette Wheel Selection
     let sum = 0;
     for (const f of freq)
         sum += f;

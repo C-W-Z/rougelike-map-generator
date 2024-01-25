@@ -4,6 +4,12 @@ This is a graph-like rougelike map generator.
 
 [Play the generator here](https://c-w-z.github.io/rougelike-map-generator/)
 
+> :warning: Warning
+> 
+> I have already add meta tags to tell browsers not to cache the website, but sometimes it still cache it. This may hide the update of website.
+> 
+> So Please **Clear Site Data** of the website if you has open it before my last commit time.
+
 ## Used Algorithms
 
 - Force-directed Graph Drawing
