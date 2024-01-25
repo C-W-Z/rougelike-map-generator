@@ -39,20 +39,16 @@ Build MST()
 Use Kruskal's Algorith to build Minimum Spaning Tree after delaunate()
 ```
 ```
-Build Paths(Path Count)
+Build Paths(Path Count, Delete Count)
 must used after delaunate()
 1. Use Dijkstra's Algorithm to find a path from start to end
 2. Randomly delete some vertices of the path from graph
 3. Repeat 1 & 2 several times, and finally merge all paths
 ```
 ```
-Build MST & Paths(Path Count)
+Build MST & Paths(Path Count, Delete Count)
 must used after delaunate()
 Use buildMST() & buildPaths() to find the MST & paths, and finally merge them.
-```
-```
-Delete Edges(Delete Count)
-Randomly delete some edges if some vertices have too many edges.
 ```
 ```
 Decide Room Type()

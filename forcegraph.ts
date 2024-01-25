@@ -215,31 +215,18 @@ class ForceGraph {
         for (let i = 0; i < iterateTime; i++)
             this.iterateStep(moveSpeed);
     }
-    public render(ctx: CanvasRenderingContext2D | null, vertexRadius: number, vertexColor: string, edgeWidth: number, edgeColor: string) {
-        if (!ctx) return;
-
-        ctx.setLineDash([5, 5]);
-
-        // draw egdes
-        ctx.lineWidth = edgeWidth;
-        ctx.strokeStyle = edgeColor;
-        ctx.beginPath();
-        for (let i = 0; i < this._vertices.length - 1; i++)
-            for (let j = i + 1; j < this._vertices.length; j++)
-                if (this.connected(i, j)) {
-                    ctx.moveTo(this._vertices[i].x, this._vertices[i].y);
-                    ctx.lineTo(this._vertices[j].x, this._vertices[j].y);
-                }
-        ctx.stroke();
-
-        // draw vertices
-        ctx.fillStyle = vertexColor;
-        ctx.beginPath();
-        for (const v of this._vertices) {
-            ctx.arc(v.x, v.y, vertexRadius, 0, 2 * Math.PI);
-            ctx.closePath();
-        }
-        ctx.fill();
+    public delaunate() {
+        // delaunay triangulation
+        const d = new Delaunator(CANVAS_CENTER, CANVAS_SIZE, CANVAS_SIZE);
+        for (const v of g.vertices)
+            d.addPoint(v);
+        // build egdes from delaunay
+        g.clearEdges();
+        d.indicesOfTriangles.forEach(tri => {
+            g.connect(tri[0], tri[1]);
+            g.connect(tri[1], tri[2]);
+            g.connect(tri[2], tri[0]);
+        });
     }
     private findMST() { // Kruskal's algorithm
         //            weight  vertex  vertex
@@ -321,7 +308,7 @@ class ForceGraph {
         // return path.reverse();
         return path;
     }
-    private findPaths(pathCount: number) {
+    private findPaths(pathCount: number, removeCount: number) {
         const [start, end] = this.findPathEnd();
         this.pathEnd = [start, end];
         if (start == end || start === null || end === null) {
@@ -340,27 +327,17 @@ class ForceGraph {
             if (pathCount <= 0)
                 break;
             // randomly remove some edges of newPath from graph
-            let removeCount = randomInt(1, 3) + clamp(Math.floor(pathCount / 2), 0, 2);
-            while (removeCount-- > 0) {
-                const vertexToRemove = newPath[randomInt(1, newPath.length - 2)];
-                this.removeAdjacent(vertexToRemove);
+            let remianRemoveCount = removeCount;
+            while (remianRemoveCount-- > 0 && newPath.length > 2) {
+                const id = newPath.length > 4 ? randomInt(2, newPath.length - 3) : randomInt(1, newPath.length - 1);
+                this.removeAdjacent(newPath[id]);
+                // console.log(newPath[id]);
+                // this.unconnect(newPath[id-1], newPath[id]);
             }
         }
 
+        // console.log(paths);
         return paths;
-    }
-    public delaunate() {
-        // delaunay triangulation
-        const d = new Delaunator(CANVAS_CENTER, CANVAS_SIZE, CANVAS_SIZE);
-        for (const v of g.vertices)
-            d.addPoint(v);
-        // build egdes from delaunay
-        g.clearEdges();
-        d.indicesOfTriangles.forEach(tri => {
-            g.connect(tri[0], tri[1]);
-            g.connect(tri[1], tri[2]);
-            g.connect(tri[2], tri[0]);
-        });
     }
     public buildMST() {
         const mst = this.findMST();
@@ -369,8 +346,8 @@ class ForceGraph {
         for (const edge of mst)
             this.connect(edge[0], edge[1]);
     }
-    public buildPaths(pathCount: number) {
-        const paths = this.findPaths(pathCount);
+    public buildPaths(pathCount: number, deleteCount: number) {
+        const paths = this.findPaths(pathCount, deleteCount);
         const oldPathEnd = this.pathEnd;
 
         // rebuild edges
@@ -382,9 +359,9 @@ class ForceGraph {
 
         this.pathEnd = oldPathEnd;
     }
-    public buildMSTPaths(pathCount: number) {
+    public buildMSTPaths(pathCount: number, deleteCount: number) {
         const mst = this.findMST();
-        const paths = this.findPaths(pathCount);
+        const paths = this.findPaths(pathCount, deleteCount);
         const [start, end] = this.pathEnd;
 
         if (start === null || end === null) {
@@ -416,16 +393,17 @@ class ForceGraph {
             if (Vec.sqrDist(rightTop, this._vertices[i]) < Vec.sqrDist(rightTop, this._vertices[end]))
                 end = i;
         }
+        
         if (start == end || start === null || end === null)
             console.error("find start / end error: ", [start, end]);
+
         return [start, end];
     }
-    private findDistant(adjacency: number[][], start: number) {
-        const n = this._vertices.length;
+    private findDistances(adjacency: number[][], start: number) {
         const dist: number[] = [];
         const visited: boolean[] = [];
         const heap = new Heap((a: { id: number, dist: number }, b: { id: number, dist: number }) => a.dist < b.dist);
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < this._vertices.length; i++) {
             visited.push(false);
             dist.push(Infinity);
         }
@@ -448,15 +426,7 @@ class ForceGraph {
             }
         }
 
-        console.log(dist);
-        let maxDist = dist[0];
-        let res = 0;
-        for (let i = 1; i < n; i++)
-            if (dist[i] > maxDist) {
-                maxDist = dist[i];
-                res = i;
-            }
-        return res;
+        return dist;
     }
     public fixPathEnd() {
         // fix if no start / end vertex
@@ -465,11 +435,16 @@ class ForceGraph {
             this.pathEnd = [start, end];
         }
 
-        if (this._vertices.length < 8 || this.adjacent[Number(this.start)].includes(Number(this.end)))
-        {
-            this.pathEnd[1] = this.findDistant(this.adjacent, Number(this.start));
-            return;
-        }
+        const dist = this.findDistances(this.adjacent, Number(this.start));
+        let maxDist = dist[Number(this.end)];
+        let distant = this.end;
+        for (let i = 0; i < this._vertices.length; i++)
+            if (dist[i] > maxDist) {
+                maxDist = dist[i];
+                distant = i;
+            }
+        if (this._vertices.length <= 10 || maxDist > this._vertices.length * 0.2)
+            this.pathEnd[1] = distant;
 
         // fix if start / end vertex has adjacent leaf vertices
         for (let i = 0; i < 2; i++)
@@ -480,6 +455,8 @@ class ForceGraph {
                 }
     }
     public randomDeleteEdge(repeat: number) {
+        // There is no guarantee that edges are all can-be-deleted. Exist low possibility of uncorrect result
+
         const canDeleteEdgeOn = (v: number) =>
             v != this.pathEnd[0] && v != this.pathEnd[1] && this.adjacent[v].length > 3;
 
@@ -506,19 +483,22 @@ class ForceGraph {
         // console.log("delete " + count);
     }
     public calculateFitness() {
-        let count1 = 0;
-        let count2 = 0;
+        let adj3 = 0;
+        let leaves: number[] = [];
         let badCount = 0;
+        let totalBadLen = 0;
         let maxBadLen = 0;
         for (let i = 0; i < this._vertices.length; i++) {
-            if (this.adjacent[i].length == 2)
-                count2++;
-            else if (this.adjacent[i].length == 1) {
-                count1++;
+            if (this.adjacent[i].length == 3) {
+                adj3++;
+            } else if (this.adjacent[i].length == 1) {
+                leaves.push(i);
                 let prev = i;
                 let next = this.adjacent[i][0];
+                // if there is a single long subgraph (e.g. a--b--c--d)
                 if (this.adjacent[next].length == 2)
                     badCount++;
+                // calculate the max length of single long subgraph
                 let len = 1;
                 while (this.adjacent[next].length == 2) {
                     len++;
@@ -531,11 +511,74 @@ class ForceGraph {
                     }
                 }
                 maxBadLen = Math.max(maxBadLen, len);
+                totalBadLen += len;
             }
         }
-        const score = -count1 * 5 - count2 - badCount * 5 - maxBadLen * 10;
-        console.log("count: ", count1, count2, badCount, maxBadLen, "score: ", score);
-        return [count1, count2, badCount, maxBadLen];
+
+        // if most leaf vertices are at same side => really bad
+        let sameSideX = 0;
+        let sameSideY = 0;
+        if (leaves.length > 1) {
+            for (const v of leaves) {
+                if (this._vertices[v].x < this.center.x)
+                    sameSideX++;
+                else if (this._vertices[v].x > this.center.x)
+                    sameSideX--;
+                if (this._vertices[v].y < this.center.y)
+                    sameSideY++;
+                else if (this._vertices[v].y > this.center.y)
+                    sameSideY--;
+            }
+            sameSideX = Math.abs(sameSideX);
+            sameSideY = Math.abs(sameSideY);
+        }
+
+        let score = adj3;
+        score -= leaves.length * 2;
+        score -= badCount * 2;
+        score -= totalBadLen * 2;
+        score -= maxBadLen * 2;
+        score -= sameSideX * 2;
+        score -= sameSideY * 2;
+        if (maxBadLen > 3)
+            score -= 40;
+        if (sameSideX > 3 || sameSideY > 3)
+            score -= 10;
+        if (sameSideX > 4 || sameSideY > 4)
+            score -= 10;
+        if (leaves.length <= 2 && sameSideX == 0 && sameSideY == 0)
+            score += 2;
+        if (leaves.length == 1)
+            score += 2;
+
+        console.log(adj3, leaves.length, sameSideX, sameSideY, badCount, totalBadLen, maxBadLen, "score:", score);
+        return score;
+    }
+    public render(ctx: CanvasRenderingContext2D | null, vertexRadius: number, vertexColor: string, edgeWidth: number, edgeColor: string) {
+        if (!ctx) return;
+
+        ctx.setLineDash([5, 5]);
+
+        // draw egdes
+        ctx.lineWidth = edgeWidth;
+        ctx.strokeStyle = edgeColor;
+        ctx.beginPath();
+        for (let i = 0; i < this._vertices.length - 1; i++)
+            for (let j = i + 1; j < this._vertices.length; j++)
+                if (this.connected(i, j)) {
+                    ctx.moveTo(this._vertices[i].x, this._vertices[i].y);
+                    ctx.lineTo(this._vertices[j].x, this._vertices[j].y);
+                }
+        ctx.stroke();
+
+        // draw vertices
+        ctx.fillStyle = vertexColor;
+        ctx.beginPath();
+        for (const v of this._vertices) {
+            ctx.arc(v.x, v.y, vertexRadius, 0, 2 * Math.PI);
+            ctx.closePath();
+        }
+        ctx.fill();
     }
 }
 
@@ -579,19 +622,22 @@ class RandomMap {
     public clear() {
         this.type = [];
     }
-    public generate(g: ForceGraph, vertexCount: number, vertexForce: number, iteration: number, pathCount: number, deleteCount: number) {
+    public generate(g: ForceGraph, vertexCount: number, vertexForce: number, iteration: number, pathCount: number, deleteCount:number) {
         g.randomGenerate(vertexCount);
         g.iterate(vertexForce, iteration);
         g.delaunate();
+
         g.iterate(vertexForce, iteration);
         g.delaunate();
-        g.buildMSTPaths(pathCount);
+        g.buildMSTPaths(pathCount, deleteCount);
+
         g.iterate(vertexForce, iteration);
         g.delaunate();
-        g.buildMSTPaths(pathCount);
-        g.randomDeleteEdge(deleteCount);
+        g.buildMSTPaths(pathCount, deleteCount);
+
+        // g.randomDeleteEdge(deleteCount);
         g.fixPathEnd();
-        // g.calculateFitness();
+        g.calculateFitness();
     }
     private rollAllType() {
         return roll(RandomMap.numArr, RoomFreq)
@@ -612,6 +658,7 @@ class RandomMap {
                 this.type[i] = this.rollAllType();
 
         if (g.start === null || g.end === null || g.adjacents(g.start).includes(g.end)) {
+            console.log("fix start / end");
             g.fixPathEnd();
             if (g.start === null || g.end === null) {
                 console.error("Not found start / end of ", g);

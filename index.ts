@@ -17,7 +17,7 @@ let vertexCount = 50;
 let vertexForce = 1.5;
 let maxIteration = 100;
 let pathCount = 12;
-let deleteCount = 5;
+let deleteCount = 3;
 const vertexCountSlider = document.getElementById("vertexCount") as HTMLInputElement;
 const vertexCountText = document.getElementById("vertexCount-text");
 const vertexForceSlider = document.getElementById("vertexForce") as HTMLInputElement;
@@ -36,7 +36,6 @@ const delaunayBtn = document.getElementById("delaunate");
 const mstBtn = document.getElementById("mst");
 const pathBtn = document.getElementById("path");
 const mstpathBtn = document.getElementById("mst-path");
-const deleteedgeBtn = document.getElementById("deleteedge");
 const roomtypeBtn = document.getElementById("roomtype");
 const newmapBtn = document.getElementById("newmap");
 
@@ -175,7 +174,6 @@ function setup() {
         mstBtn?.setAttribute('disabled', '');
         pathBtn?.setAttribute('disabled', '');
         mstpathBtn?.setAttribute('disabled', '');
-        deleteedgeBtn?.setAttribute('disabled', '');
         roomtypeBtn?.setAttribute('disabled', '');
     });
 
@@ -194,7 +192,6 @@ function setup() {
         pathBtn?.removeAttribute('disabled');
         mstpathBtn?.removeAttribute('disabled');
         roomtypeBtn?.removeAttribute('disabled');
-        deleteedgeBtn?.removeAttribute('disabled');
     });
 
     mstBtn?.addEventListener("click", event => {
@@ -207,7 +204,7 @@ function setup() {
     });
 
     pathBtn?.addEventListener("click", event => {
-        g.buildPaths(pathCount);
+        g.buildPaths(pathCount, deleteCount);
         m.clear();
         redraw();
         mstBtn?.setAttribute('disabled', '');
@@ -216,17 +213,12 @@ function setup() {
     });
 
     mstpathBtn?.addEventListener("click", event => {
-        g.buildMSTPaths(pathCount);
+        g.buildMSTPaths(pathCount, deleteCount);
         m.clear();
         redraw();
         mstBtn?.setAttribute('disabled', '');
         pathBtn?.setAttribute('disabled', '');
         mstpathBtn?.setAttribute('disabled', '');
-    });
-
-    deleteedgeBtn?.addEventListener("click", event => {
-        g.randomDeleteEdge(deleteCount);
-        redraw();
     });
 
     roomtypeBtn?.addEventListener("click", event => {
