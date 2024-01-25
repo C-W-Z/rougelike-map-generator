@@ -68,13 +68,8 @@ The last button `New Map()` will do my favorite combination instantly:
 4. repeat 3 & 4
 5. Build MST & Paths()
 6. repeat 4 & 5
-7. Delete Edges()
 8. Decide Room Type()
 ```
-
-Another way to generate awesome map without leaf vertices is:
-
-after delaunate(), just use randomDeleteEdge() several times and then decideRoomTypes()
 
 ## Reference
 
