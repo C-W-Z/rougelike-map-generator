@@ -307,7 +307,7 @@ class ForceGraph {
                 if (dist[cur] + weight < dist[v]) {
                     dist[v] = dist[cur] + weight;
                     prev[v] = cur;
-                    heap.push({ id: v, dist: weight });
+                    heap.push({ id: v, dist: dist[v] });
                 }
             }
         }
@@ -420,8 +420,43 @@ class ForceGraph {
             console.error("find start / end error: ", [start, end]);
         return [start, end];
     }
-    private findDistant(start: number) {
-        
+    private findDistant(adjacency: number[][], start: number) {
+        const n = this._vertices.length;
+        const dist: number[] = [];
+        const visited: boolean[] = [];
+        const heap = new Heap((a: { id: number, dist: number }, b: { id: number, dist: number }) => a.dist < b.dist);
+        for (let i = 0; i < n; i++) {
+            visited.push(false);
+            dist.push(Infinity);
+        }
+        dist[start] = 0;
+        heap.push({ id: start, dist: 0 });
+
+        while (!heap.empty()) {
+            let cur: number = heap.pop().id;
+
+            if (visited[cur] || dist[cur] === Infinity)
+                continue;
+            visited[cur] = true;
+
+            for (const v of adjacency[cur]) {
+                if (visited[v]) continue;
+                if (dist[cur] + 1 < dist[v]) {
+                    dist[v] = dist[cur] + 1;
+                    heap.push({ id: v, dist: dist[v] });
+                }
+            }
+        }
+
+        console.log(dist);
+        let maxDist = dist[0];
+        let res = 0;
+        for (let i = 1; i < n; i++)
+            if (dist[i] > maxDist) {
+                maxDist = dist[i];
+                res = i;
+            }
+        return res;
     }
     public fixPathEnd() {
         // fix if no start / end vertex
@@ -430,11 +465,11 @@ class ForceGraph {
             this.pathEnd = [start, end];
         }
 
-        // if (this._vertices.length < 8 || this.adjacent[Number(this.start)].includes(Number(this.end)))
-        // {
-        //     this.pathEnd[1] = this.findDistant(Number(this.start));
-        //     return;
-        // }
+        if (this._vertices.length < 8 || this.adjacent[Number(this.start)].includes(Number(this.end)))
+        {
+            this.pathEnd[1] = this.findDistant(this.adjacent, Number(this.start));
+            return;
+        }
 
         // fix if start / end vertex has adjacent leaf vertices
         for (let i = 0; i < 2; i++)
@@ -544,14 +579,14 @@ class RandomMap {
     public clear() {
         this.type = [];
     }
-    public generate(g: ForceGraph, vertexCount: number, vertexForce: number, pathCount: number, deleteCount: number) {
+    public generate(g: ForceGraph, vertexCount: number, vertexForce: number, iteration: number, pathCount: number, deleteCount: number) {
         g.randomGenerate(vertexCount);
-        g.iterate(vertexForce, 100);
+        g.iterate(vertexForce, iteration);
         g.delaunate();
-        g.iterate(vertexForce, 100);
+        g.iterate(vertexForce, iteration);
         g.delaunate();
         g.buildMSTPaths(pathCount);
-        g.iterate(vertexForce, 100);
+        g.iterate(vertexForce, iteration);
         g.delaunate();
         g.buildMSTPaths(pathCount);
         g.randomDeleteEdge(deleteCount);
@@ -573,13 +608,15 @@ class RandomMap {
 
         /* random decide types */
         for (let i = 0; i < n; i++)
-            this.type[i] = this.rollAllType();
+            if (g.adjacents(i).length > 0)
+                this.type[i] = this.rollAllType();
 
         if (g.start === null || g.end === null || g.adjacents(g.start).includes(g.end)) {
-            console.error("Not found start / end of ", g);
             g.fixPathEnd();
-            if (g.start === null || g.end === null)
+            if (g.start === null || g.end === null) {
+                console.error("Not found start / end of ", g);
                 return;
+            }
         }
 
         // elite & rest should not appear near start point
@@ -604,6 +641,7 @@ class RandomMap {
 
         // fix nearly same types
         for (let i = 0; i < n; i++) {
+            if (g.adjacents(i).length < 0) continue;
             fixNearSameType(i, RoomType.tres);
             fixNearSameType(i, RoomType.esoc);
             fixNearSameType(i, RoomType.rest);
@@ -621,7 +659,7 @@ class RandomMap {
         for (let i = 0; i < RoomFreq.length; i++)
             rooms.push([]);
         for (let i = 0; i < n; i++)
-            if (i != g.start && i != g.end)
+            if (i != g.start && i != g.end && g.adjacents(i).length > 0)
                 rooms[this.type[i]].push(i);
 
         const fixCount = (type: number, anotherType: number, least: number, most: number = n) => {
@@ -668,21 +706,20 @@ class RandomMap {
 
         // fix leaf vertices
         for (let i = 0; i < n; i++) {
-            if (g.adjacents(i).length == 1) {
-                // place rare rooms at leaf vertices
-                if (this.type[i] == RoomType.norm || this.type[i] == RoomType.elit) {
-                    remove(rooms[this.type[i]], i);
-                    this.type[i] = this.rollRareType();
-                    rooms[this.type[i]].push(i);
-                }
-                // fix nearly same rare rooms at leaf vertices
-                const v = g.adjacents(i)[0];
-                if (this.type[v] == this.type[i] && RareRoomType.includes(this.type[i])) {
-                    // console.log("rare to elite");
-                    remove(rooms[this.type[v]], v);
-                    this.type[v] = RoomType.elit;
-                    rooms[this.type[v]].push(v);
-                }
+            if (g.adjacents(i).length != 1) continue;
+            // place rare rooms at leaf vertices
+            if (this.type[i] == RoomType.norm || this.type[i] == RoomType.elit) {
+                remove(rooms[this.type[i]], i);
+                this.type[i] = this.rollRareType();
+                rooms[this.type[i]].push(i);
+            }
+            // fix nearly same rare rooms at leaf vertices
+            const v = g.adjacents(i)[0];
+            if (this.type[v] == this.type[i] && RareRoomType.includes(this.type[i])) {
+                // console.log("rare to elite");
+                remove(rooms[this.type[v]], v);
+                this.type[v] = RoomType.elit;
+                rooms[this.type[v]].push(v);
             }
         }
 
@@ -710,6 +747,7 @@ class RandomMap {
         }
 
         for (let i = 0; i < vertices.length; i++) {
+            if (this.type[i] < 0) continue;
             const icon = img[this.type[i]];
             const pos = vertices[i];
             if (this.type[i] == RoomType.boss)

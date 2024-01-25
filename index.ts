@@ -15,24 +15,28 @@ const m = new RandomMap();
 let animationId: number | null = null;
 let vertexCount = 50;
 let vertexForce = 1.5;
+let maxIteration = 100;
 let pathCount = 12;
 let deleteCount = 5;
 const vertexCountSlider = document.getElementById("vertexCount") as HTMLInputElement;
 const vertexCountText = document.getElementById("vertexCount-text");
 const vertexForceSlider = document.getElementById("vertexForce") as HTMLInputElement;
 const vertexForceText = document.getElementById("vertexForce-text");
+const maxIterationSlider =  document.getElementById("maxIteration") as HTMLInputElement;
+const maxIterationText = document.getElementById("maxIteration-text");
+const iterationText = document.getElementById("iteration-text");
 const pathCountSlider = document.getElementById("pathCount") as HTMLInputElement;
 const pathCountText = document.getElementById("pathCount-text");
 const deleteCountSlider = document.getElementById("deleteCount") as HTMLInputElement;
 const deleteCountText = document.getElementById("deleteCount-text");
+
 const playPauseBtn = document.getElementById("play-pause");
 const generateBtn = document.getElementById("generate");
-const connectBtn = document.getElementById("connect");
-const clearconnectBtn = document.getElementById("clearconnect");
 const delaunayBtn = document.getElementById("delaunate");
 const mstBtn = document.getElementById("mst");
 const pathBtn = document.getElementById("path");
 const mstpathBtn = document.getElementById("mst-path");
+const deleteedgeBtn = document.getElementById("deleteedge");
 const roomtypeBtn = document.getElementById("roomtype");
 const newmapBtn = document.getElementById("newmap");
 
@@ -60,7 +64,16 @@ function redraw() {
     }
 }
 
+let iteration = 0;
 function renderLoop() {
+    if (iteration >= maxIteration) {
+        pause();
+        return;
+    }
+    iteration++;
+    if (iterationText)
+        iterationText.textContent = `Iteration: ${iteration}`;
+
     g.iterate(vertexForce);
 
     redraw();
@@ -75,6 +88,7 @@ function isPaused() {
 function play() {
     if (playPauseBtn)
         playPauseBtn.textContent = "Stop Iteration";
+    iteration = 0;
     renderLoop();
 }
 
@@ -123,6 +137,15 @@ function setup() {
         });
     }
 
+    if (maxIterationText) {
+        maxIterationText.textContent = maxIteration.toString();
+        maxIterationSlider.value = maxIteration.toString();
+        maxIterationSlider.addEventListener("input", event => {
+            maxIterationText.textContent = maxIterationSlider.value;
+            maxIteration = parseInt(maxIterationSlider.value);
+        });
+    }
+
     if (pathCountText) {
         pathCountText.textContent = pathCount.toString();
         pathCountSlider.value = pathCount.toString();
@@ -141,22 +164,19 @@ function setup() {
         });
     }
 
+    mstBtn?.setAttribute('disabled', '');
+    pathBtn?.setAttribute('disabled', '');
+    mstpathBtn?.setAttribute('disabled', '');
+
     generateBtn?.addEventListener("click", event => {
         g.randomGenerate(vertexCount);
         m.clear();
         redraw();
-    });
-
-    connectBtn?.addEventListener("click", event => {
-        g.randomConnect(20, 5, CANVAS_SIZE / 3);
-        m.clear();
-        redraw();
-    });
-
-    clearconnectBtn?.addEventListener("click", event => {
-        g.clearEdges();
-        m.clear();
-        redraw();
+        mstBtn?.setAttribute('disabled', '');
+        pathBtn?.setAttribute('disabled', '');
+        mstpathBtn?.setAttribute('disabled', '');
+        deleteedgeBtn?.setAttribute('disabled', '');
+        roomtypeBtn?.setAttribute('disabled', '');
     });
 
     playPauseBtn?.addEventListener("click", event => {
@@ -170,23 +190,42 @@ function setup() {
         g.delaunate();
         m.clear();
         redraw();
+        mstBtn?.removeAttribute('disabled');
+        pathBtn?.removeAttribute('disabled');
+        mstpathBtn?.removeAttribute('disabled');
+        roomtypeBtn?.removeAttribute('disabled');
+        deleteedgeBtn?.removeAttribute('disabled');
     });
 
     mstBtn?.addEventListener("click", event => {
         g.buildMST();
         m.clear();
         redraw();
+        mstBtn?.setAttribute('disabled', '');
+        pathBtn?.setAttribute('disabled', '');
+        mstpathBtn?.setAttribute('disabled', '');
     });
 
     pathBtn?.addEventListener("click", event => {
         g.buildPaths(pathCount);
         m.clear();
         redraw();
+        mstBtn?.setAttribute('disabled', '');
+        pathBtn?.setAttribute('disabled', '');
+        mstpathBtn?.setAttribute('disabled', '');
     });
 
     mstpathBtn?.addEventListener("click", event => {
         g.buildMSTPaths(pathCount);
         m.clear();
+        redraw();
+        mstBtn?.setAttribute('disabled', '');
+        pathBtn?.setAttribute('disabled', '');
+        mstpathBtn?.setAttribute('disabled', '');
+    });
+
+    deleteedgeBtn?.addEventListener("click", event => {
+        g.randomDeleteEdge(deleteCount);
         redraw();
     });
 
@@ -196,9 +235,12 @@ function setup() {
     });
 
     newmapBtn?.addEventListener("click", event => {
-        m.generate(g, vertexCount, vertexForce, pathCount, deleteCount);
+        m.generate(g, vertexCount, vertexForce, maxIteration, pathCount, deleteCount);
         m.decideRoomTypes(g);
         redraw();
+        mstBtn?.setAttribute('disabled', '');
+        pathBtn?.setAttribute('disabled', '');
+        mstpathBtn?.setAttribute('disabled', '');
     });
 
     clearCanvas();
