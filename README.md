@@ -6,9 +6,9 @@ This is a graph-like rougelike map generator.
 
 > :warning: Warning
 > 
-> I have already add meta tags to tell browsers not to cache the website, but sometimes it still cache it. This may hide the update of website.
+> I have already add meta tags to tell browsers not to cache the website, but sometimes it still cache it. This may hide the update.
 > 
-> So Please **Clear Site Data** of the website if you has open it before my last commit time.
+> So if you has open the website before my last commit time, please **Clear Site Data** of it or use **Hard Refresh** (e.g. `Ctrl+F5` in Chrome).
 
 ## Used Algorithms
 
